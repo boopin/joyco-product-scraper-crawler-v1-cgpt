@@ -1,9 +1,9 @@
 name: Run Crawler Daily
 
 on:
-  workflow_dispatch:  # Manual trigger from GitHub UI
+  workflow_dispatch:
   schedule:
-    - cron: '0 21 * * *'  # Runs daily at 1 AM Dubai time (UTC+4)
+    - cron: '0 21 * * *'  # 1 AM Dubai time
 
 jobs:
   crawl:
@@ -26,12 +26,16 @@ jobs:
       - name: Run crawler script
         run: python crawler.py
 
-      - name: Commit and push updated URLs
+      - name: Run feed generator
+        run: python product_feed_generator.py
+
+      - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add product_urls/product_links.csv product_urls/product_links.xml
-          git commit -m "Update product URLs - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git add google_feed/product_feed.csv google_feed/product_feed.xml
+          git commit -m "Update product feed - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
