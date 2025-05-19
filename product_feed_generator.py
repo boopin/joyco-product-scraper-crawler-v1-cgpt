@@ -32,8 +32,9 @@ def extract_product_data(url):
         # Extract product ID from URL
         product_id = url.split("/")[-1]
         
-        # Get title from h2 tag
-        title = soup.find("h2").get_text(strip=True) if soup.find("h2") else "No Title"
+        # Get title from the product detail h2 - fixed selector for better targeting
+        title_tag = soup.select_one(".col-md-6 h2")
+        title = title_tag.get_text(strip=True) if title_tag else "No Title"
         logging.info(f"Title extracted: {title}")
         
         # Get full description from class="text-body" div in #description
