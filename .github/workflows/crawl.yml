@@ -1,15 +1,17 @@
 name: Run Crawler Daily
 
 on:
+  workflow_dispatch:  # Allows manual run
   schedule:
-    # Runs at 1:00 AM Dubai time (UTC+4), so 21:00 UTC previous day
-    - cron: '0 21 * * *'
+    - cron: '0 21 * * *'  # 1:00 AM Dubai time daily (UTC+4)
 
 jobs:
   crawl:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -22,8 +24,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run crawler script
-        run: |
-          python crawler.py
+        run: python crawler.py
 
       - name: Commit and push updated URLs
         run: |
