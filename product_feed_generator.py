@@ -6,12 +6,12 @@ from urllib.parse import urlparse
 from datetime import datetime
 import os
 
-# Input and output paths
+# Input/output paths
 INPUT_CSV = "product_urls/product_links.csv"
-CSV_OUTPUT = "google_feed/google_product_feed.csv"  # ✅ Updated filename
+CSV_OUTPUT = "google_feed/google_product_feed.csv"
 XML_OUTPUT = "google_feed/product_feed.xml"
 
-# Ensure output directory exists
+# Ensure output folder exists
 os.makedirs("google_feed", exist_ok=True)
 
 def extract_product_data(url):
@@ -19,32 +19,34 @@ def extract_product_data(url):
         response = requests.get(url, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Title fallback: h1 → <title>
+        # --- Title ---
         h1 = soup.find("h1")
         title = h1.get_text(strip=True) if h1 else (soup.title.string.strip() if soup.title else "No Title")
 
-        # Description fallback: meta[name=description] → first <p>
-        desc_tag = soup.find("meta", attrs={"name": "description"})
-        if desc_tag:
-            description = desc_tag['content'].strip()
-        else:
-            p_tag = soup.find("p")
-            description = p_tag.get_text(strip=True) if p_tag else "No Description"
+        # --- Description ---
+        description = "No Description"
+        try:
+            # Locate 'DESCRIPTION' heading and fetch next sibling div
+            desc_heading = soup.find(lambda tag: tag.name in ["h2", "div"] and "DESCRIPTION" in tag.get_text(strip=True).upper())
+            if desc_heading:
+                desc_container = desc_heading.find_next_sibling("div")
+                if desc_container:
+                    description = desc_container.get_text(strip=True)
+        except Exception:
+            pass
 
-        # Image fallback: meta property og:image
+        # --- Image ---
         image_tag = soup.find("meta", property="og:image")
         image_link = image_tag['content'] if image_tag else ""
 
-        # Price fallback: meta[itemprop=price] → span.price (adjust selector if needed)
-        price_tag = soup.find("meta", attrs={"itemprop": "price"})
-        if price_tag:
-            price = price_tag['content']
-        else:
-            price_span = soup.find("span", class_="price")
+        # --- Price ---
+        price = "0.00"
+        try:
+            price_span = soup.find("span", class_="product__price")
             if price_span:
                 price = price_span.get_text(strip=True).replace("AED", "").replace(",", "").strip()
-            else:
-                price = "0.00"
+        except Exception:
+            pass
 
         return {
             "id": url.split("/")[-1],
