@@ -1,88 +1,100 @@
-# crawler.py
-
 import cloudscraper
 from bs4 import BeautifulSoup
 import json
 import os
+from urllib.parse import urlparse
 from datetime import datetime
 
-# CONFIG - You can later replace this with full dynamic crawl logic
+# CONFIG: Test with a single product URL
 product_urls = [
     "https://joyandco.com/product/flower-girl-candleholder-yellow-CA8gpn"
 ]
 
-OUTPUT_JSON = "product_data_latest.json"
-BACKUP_JSON = f"product_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+OUTPUT_JSON = "product_feed.json"
+BACKUP_DIR = "backups"
+os.makedirs(BACKUP_DIR, exist_ok=True)
 
-def fetch_html(url):
+# Load previous feed to compare for is_new logic
+def load_previous_feed():
+    if os.path.exists(OUTPUT_JSON):
+        with open(OUTPUT_JSON, "r") as f:
+            return json.load(f)
+    return []
+
+def extract_product_data(url):
     scraper = cloudscraper.create_scraper()
-    try:
-        response = scraper.get(url)
-        if response.status_code == 200:
-            return response.text
-        else:
-            print(f"❌ Failed to fetch {url} - Status: {response.status_code}")
-            return None
-    except Exception as e:
-        print(f"❌ Exception fetching {url}: {str(e)}")
-        return None
+    response = scraper.get(url)
+    soup = BeautifulSoup(response.text, "lxml")
 
-def extract_product_data(url, html):
-    soup = BeautifulSoup(html, "html.parser")
+    title = soup.select_one("h1.product-title").text.strip() if soup.select_one("h1.product-title") else ""
+    price_el = soup.select_one(".product__price .price-item--regular")
+    price = price_el.text.strip().replace("AED", "").strip() if price_el else ""
 
-    def safe_select(selector):
-        tag = soup.select_one(selector)
-        return tag.get_text(strip=True) if tag else ""
+    desc = soup.select_one("div.product__description") or soup.select_one("div#ProductAccordion-accordion-template--16663949584603__main-0")
+    description = desc.get_text(separator=" ").strip() if desc else ""
 
-    def safe_attr(selector, attr):
-        tag = soup.select_one(selector)
-        return tag[attr].strip() if tag and attr in tag.attrs else ""
+    image = soup.select_one("img.product__media") or soup.select_one("img.product__media-item")
+    image_url = image["src"] if image and image.has_attr("src") else ""
+
+    # Additional fields for Google Shopping
+    brand = "Joy & Co"
+    mpn = urlparse(url).path.split("/")[-1].split("-")[-1]
+    gtin = f"0000000{mpn[-4:]}" if mpn else ""
+    availability = "in stock" if "sold out" not in soup.text.lower() else "out of stock"
+    category = "Home Decor"  # Hardcoded for now
 
     return {
         "url": url,
-        "title": safe_select("h1"),
-        "price": safe_select(".price .price-item"),  # Adjust based on site class
-        "image": safe_attr("img.product__media", "src") or safe_attr("img.product__media", "data-src"),
-        "brand": "Joy & Co",
-        "gtin": safe_select("[itemprop='gtin13'], [itemprop='gtin']"),
-        "mpn": safe_select("[itemprop='mpn']"),
-        "availability": safe_select("[itemprop='availability']") or "in stock",
-        "category": safe_select(".breadcrumb a:last-of-type") or "Home Decor"
+        "title": title,
+        "price": price,
+        "description": description,
+        "image_link": image_url,
+        "brand": brand,
+        "mpn": mpn,
+        "gtin": gtin,
+        "availability": availability,
+        "product_type": category,
+        "is_new": False,  # Default; will be updated later
     }
 
-def load_previous_data():
-    if os.path.exists(OUTPUT_JSON):
-        with open(OUTPUT_JSON, "r") as f:
-            return {item["url"]: item for item in json.load(f)}
-    return {}
+def update_is_new(current_data, previous_data):
+    prev_map = {item["url"]: item for item in previous_data}
+    for product in current_data:
+        url = product["url"]
+        if url not in prev_map:
+            product["is_new"] = True
+        else:
+            old = prev_map[url]
+            # Compare major fields for any updates
+            fields_to_compare = ["title", "price", "description"]
+            product["is_new"] = any(product.get(f) != old.get(f) for f in fields_to_compare)
 
-def save_data(data):
-    # Backup existing data
-    if os.path.exists(OUTPUT_JSON):
-        os.rename(OUTPUT_JSON, BACKUP_JSON)
-        print(f"📦 Created backup: {BACKUP_JSON}")
+def save_backup(previous_data):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    with open(f"{BACKUP_DIR}/product_feed_{timestamp}.json", "w") as f:
+        json.dump(previous_data, f, indent=2)
 
+def save_current_feed(data):
     with open(OUTPUT_JSON, "w") as f:
         json.dump(data, f, indent=2)
-        print(f"✅ Saved: {OUTPUT_JSON}")
 
 def main():
-    previous_data = load_previous_data()
-    all_data = []
+    print("🕵️‍♀️ Starting product crawl...")
+    previous_data = load_previous_feed()
+    current_data = []
 
     for url in product_urls:
-        html = fetch_html(url)
-        if not html:
-            continue
+        try:
+            product_data = extract_product_data(url)
+            current_data.append(product_data)
+        except Exception as e:
+            print(f"❌ Error extracting {url}: {e}")
 
-        product = extract_product_data(url, html)
-
-        # is_new comparison logic
-        old = previous_data.get(url)
-        product["is_new"] = old != product
-        all_data.append(product)
-
-    save_data(all_data)
+    update_is_new(current_data, previous_data)
+    if previous_data:
+        save_backup(previous_data)
+    save_current_feed(current_data)
+    print(f"✅ Crawled {len(current_data)} products and saved to {OUTPUT_JSON}")
 
 if __name__ == "__main__":
     main()
