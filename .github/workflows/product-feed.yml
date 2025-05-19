@@ -31,7 +31,7 @@ jobs:
           python product_feed_generator.py
 
       - name: Upload CSV Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: product_feed_csv
           path: google_feed/product_feed.csv
