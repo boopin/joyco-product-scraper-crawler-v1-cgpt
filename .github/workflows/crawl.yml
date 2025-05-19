@@ -1,9 +1,9 @@
-name: Run Crawler Daily
+name: Run Crawler on Mon, Wed, Fri
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 21 * * *'  # 1 AM Dubai time
+    - cron: '0 21 * * 1,3,5'  # 1 AM Dubai time on Mon, Wed, Fri
 
 jobs:
   crawl:
