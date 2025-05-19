@@ -35,7 +35,15 @@ jobs:
           git config --local user.name "GitHub Action"
           git add product_urls/product_links.csv product_urls/product_links.xml
           git add google_feed/product_feed.csv google_feed/product_feed.xml
+          git add google_feed/google_merchant_feed.csv
           git commit -m "Update product feed - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload Google Merchant Feed as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: google-merchant-feed
+          path: google_feed/google_merchant_feed.csv
+          retention-days: 7
