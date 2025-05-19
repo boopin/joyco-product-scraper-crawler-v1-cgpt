@@ -1,3 +1,4 @@
+
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -9,21 +10,39 @@ import logging
 import re
 import random
 import json
+import sys
 
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 
 # Read URLs from crawler output
 INPUT_CSV = "product_urls/product_links.csv"
 CSV_OUTPUT = "google_feed/product_feed.csv"
 XML_OUTPUT = "google_feed/product_feed.xml"
+GOOGLE_MERCHANT_CSV = "google_feed/google_merchant_feed.csv"
 
 # Ensure output directories exist
 os.makedirs("google_feed", exist_ok=True)
 logging.info(f"Ensured google_feed directory exists")
+
+# Google Product Category Mapping (basic - add more based on your products)
+CATEGORY_MAPPING = {
+    "Tableware": "6208",  # Home & Garden > Kitchen & Dining > Tableware
+    "Candles": "3655",    # Home & Garden > Decor > Candles & Home Fragrances
+    "Cushions": "635",    # Home & Garden > Decor > Throw Pillows
+    "Vases": "644",       # Home & Garden > Decor > Vases
+    "Wall Art": "639",    # Home & Garden > Decor > Artwork
+    "Side Tables": "6357" # Home & Garden > Furniture > Tables > Side Tables
+}
+
+# Default fallback Google category for home decor
+DEFAULT_GOOGLE_CATEGORY = "635" # Home & Garden > Decor
 
 # User-Agent rotation for avoiding bot detection
 USER_AGENTS = [
@@ -38,12 +57,19 @@ USER_AGENTS = [
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
+def map_to_google_category(category_name):
+    """Map Joy&Co category to Google's product taxonomy"""
+    # Look for keywords in the category
+    for keyword, google_id in CATEGORY_MAPPING.items():
+        if keyword.lower() in category_name.lower():
+            return google_id
+    return DEFAULT_GOOGLE_CATEGORY
+
 def extract_product_data(url):
     try:
         logging.info(f"Extracting data from: {url}")
         
         # Add a random delay between 1-2 seconds to be polite to the server
-        random.seed()
         time.sleep(random.uniform(1, 2))
         
         headers = {
@@ -122,6 +148,13 @@ def extract_product_data(url):
             price_match = re.search(r'(\d+(?:\.\d+)?)', price_text)
             if price_match:
                 price = price_match.group(1)
+                
+                # Ensure price has 2 decimal places for Google Merchant format
+                if '.' not in price:
+                    price = f"{price}.00"
+                elif len(price.split('.')[1]) == 1:
+                    price = f"{price}0"
+                    
         logging.info(f"Price extracted: {price}")
         
         # Get brand from the p.pic-info
@@ -136,6 +169,9 @@ def extract_product_data(url):
             breadcrumbs.append(crumb.get_text(strip=True))
         
         category = " > ".join(breadcrumbs) if breadcrumbs else "Uncategorized"
+        
+        # Map to Google product category
+        google_product_category = map_to_google_category(category)
         
         # Check if product is in stock
         stock_status = "in stock"
@@ -153,6 +189,18 @@ def extract_product_data(url):
                 if variant_name and variant_value:
                     variants.append({"name": variant_name, "value": variant_value})
 
+        # Look for product code as MPN (Manufacturer Part Number)
+        mpn = ""
+        code_info = soup.select_one(".code-info")
+        if code_info:
+            code_match = re.search(r'Product code - (\w+)', code_info.get_text(strip=True))
+            if code_match:
+                mpn = code_match.group(1)
+        
+        # If no MPN found, use the product ID
+        if not mpn:
+            mpn = product_id
+
         product_data = {
             "id": product_id,
             "title": title,
@@ -160,12 +208,16 @@ def extract_product_data(url):
             "rich_description": rich_description,
             "link": url,
             "image_link": image_link,
+            "additional_image_link": additional_images[0] if additional_images else "",
             "additional_images": additional_images,
             "availability": stock_status,
             "price": f"{price} AED",
             "brand": brand,
             "condition": "new",
             "category": category,
+            "google_product_category": google_product_category,
+            "mpn": mpn,
+            "gtin": "",  # Not available from the website
             "variants": json.dumps(variants) if variants else ""
         }
         
@@ -215,6 +267,49 @@ def generate_csv(products):
             
     except Exception as e:
         logging.error(f"Error generating CSV file: {e}")
+        return False
+
+def generate_google_merchant_feed(products):
+    try:
+        logging.info(f"Generating Google Merchant feed at {GOOGLE_MERCHANT_CSV} with {len(products)} products")
+        
+        # Define required Google Merchant fields
+        google_fields = [
+            "id", "title", "description", "link", "image_link", "additional_image_link",
+            "availability", "price", "brand", "condition", "google_product_category", 
+            "mpn", "gtin"
+        ]
+        
+        # Convert all values to strings for CSV compatibility
+        google_products = []
+        for product in products:
+            google_product = {}
+            for field in google_fields:
+                value = product.get(field, "")
+                google_product[field] = str(value) if value is not None else ""
+            google_products.append(google_product)
+        
+        with open(GOOGLE_MERCHANT_CSV, mode='w', newline='', encoding='utf-8') as file:
+            if not products:
+                logging.warning("No products to write to Google Merchant feed")
+                return False
+                
+            writer = csv.DictWriter(file, fieldnames=google_fields)
+            writer.writeheader()
+            for product in google_products:
+                writer.writerow(product)
+        
+        # Verify file was created
+        if os.path.exists(GOOGLE_MERCHANT_CSV):
+            file_size = os.path.getsize(GOOGLE_MERCHANT_CSV)
+            logging.info(f"Google Merchant feed successfully created at {GOOGLE_MERCHANT_CSV}, size: {file_size} bytes")
+            return True
+        else:
+            logging.error(f"Google Merchant feed was not created at {GOOGLE_MERCHANT_CSV}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error generating Google Merchant feed: {e}")
         return False
 
 def generate_xml(products):
@@ -301,22 +396,22 @@ def main():
             test_product = products[0]
             logging.info(f"Debug - First product: {test_product['title']}")
             
-            # First try to create just the XML file to confirm parsing works
+            # Create the standard feeds
             xml_success = generate_xml(products)
-            logging.info(f"XML generation: {'Success' if xml_success else 'Failed'}")
-            
-            # Then try CSV generation
             csv_success = generate_csv(products)
-            logging.info(f"CSV generation: {'Success' if csv_success else 'Failed'}")
             
-            if csv_success and xml_success:
-                print(f"✅ Successfully generated feed for {len(products)} products.")
-            elif csv_success:
-                print(f"⚠️ Generated CSV only for {len(products)} products. XML failed.")
-            elif xml_success:
-                print(f"⚠️ Generated XML only for {len(products)} products. CSV failed.")
+            # Create the Google Merchant feed
+            google_success = generate_google_merchant_feed(products)
+            
+            if csv_success and xml_success and google_success:
+                print(f"✅ Successfully generated feeds for {len(products)} products.")
             else:
-                print("❌ Failed to generate both CSV and XML feeds.")
+                if not csv_success:
+                    print(f"⚠️ Failed to generate standard CSV feed.")
+                if not xml_success:
+                    print(f"⚠️ Failed to generate XML feed.")
+                if not google_success:
+                    print(f"⚠️ Failed to generate Google Merchant feed.")
         else:
             logging.warning("No products were processed.")
             print("⚠️ No products were processed.")
