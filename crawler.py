@@ -1,74 +1,88 @@
-import requests
+# crawler.py
+
+import cloudscraper
 from bs4 import BeautifulSoup
-import csv
-import xml.etree.ElementTree as ET
-from urllib.parse import urljoin, urlparse
-from datetime import datetime
+import json
 import os
+from datetime import datetime
 
-BASE_URL = "https://joyandco.com"
-visited_urls = set()
-product_urls = set()
+# CONFIG - You can later replace this with full dynamic crawl logic
+product_urls = [
+    "https://joyandco.com/product/flower-girl-candleholder-yellow-CA8gpn"
+]
 
-INPUT_CSV = "product_urls/product_links.csv"
-CSV_OUTPUT = "product_urls/product_links.csv"
-XML_OUTPUT = "product_urls/product_links.xml"
+OUTPUT_JSON = "product_data_latest.json"
+BACKUP_JSON = f"product_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
-# Load existing URLs (if any)
-def load_existing_urls():
-    if not os.path.exists(INPUT_CSV):
-        return set()
-    with open(INPUT_CSV, newline='') as file:
-        reader = csv.DictReader(file)
-        return set(row["url"] for row in reader)
-
-def is_valid_url(url):
-    parsed = urlparse(url)
-    return parsed.netloc == "" or parsed.netloc == urlparse(BASE_URL).netloc
-
-def crawl(url):
+def fetch_html(url):
+    scraper = cloudscraper.create_scraper()
     try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        for link_tag in soup.find_all("a", href=True):
-            href = link_tag['href']
-            full_url = urljoin(BASE_URL, href.split("?")[0])
-            if is_valid_url(full_url) and full_url.startswith(BASE_URL):
-                if full_url not in visited_urls:
-                    visited_urls.add(full_url)
-                    if "/product/" in full_url:
-                        product_urls.add(full_url)
-                    else:
-                        crawl(full_url)
+        response = scraper.get(url)
+        if response.status_code == 200:
+            return response.text
+        else:
+            print(f"❌ Failed to fetch {url} - Status: {response.status_code}")
+            return None
     except Exception as e:
-        print(f"Error crawling {url}: {e}")
+        print(f"❌ Exception fetching {url}: {str(e)}")
+        return None
 
-def save_to_csv(urls, previous_urls):
-    os.makedirs(os.path.dirname(CSV_OUTPUT), exist_ok=True)
-    with open(CSV_OUTPUT, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["url", "timestamp", "is_new"])
-        for url in sorted(urls):
-            is_new = "true" if url not in previous_urls else "false"
-            writer.writerow([url, datetime.utcnow().isoformat(), is_new])
+def extract_product_data(url, html):
+    soup = BeautifulSoup(html, "html.parser")
 
-def save_to_xml(urls, previous_urls):
-    os.makedirs(os.path.dirname(XML_OUTPUT), exist_ok=True)
-    root = ET.Element("products")
-    for url in sorted(urls):
-        product = ET.SubElement(root, "product")
-        ET.SubElement(product, "url").text = url
-        ET.SubElement(product, "timestamp").text = datetime.utcnow().isoformat()
-        ET.SubElement(product, "is_new").text = "true" if url not in previous_urls else "false"
-    tree = ET.ElementTree(root)
-    tree.write(XML_OUTPUT)
+    def safe_select(selector):
+        tag = soup.select_one(selector)
+        return tag.get_text(strip=True) if tag else ""
+
+    def safe_attr(selector, attr):
+        tag = soup.select_one(selector)
+        return tag[attr].strip() if tag and attr in tag.attrs else ""
+
+    return {
+        "url": url,
+        "title": safe_select("h1"),
+        "price": safe_select(".price .price-item"),  # Adjust based on site class
+        "image": safe_attr("img.product__media", "src") or safe_attr("img.product__media", "data-src"),
+        "brand": "Joy & Co",
+        "gtin": safe_select("[itemprop='gtin13'], [itemprop='gtin']"),
+        "mpn": safe_select("[itemprop='mpn']"),
+        "availability": safe_select("[itemprop='availability']") or "in stock",
+        "category": safe_select(".breadcrumb a:last-of-type") or "Home Decor"
+    }
+
+def load_previous_data():
+    if os.path.exists(OUTPUT_JSON):
+        with open(OUTPUT_JSON, "r") as f:
+            return {item["url"]: item for item in json.load(f)}
+    return {}
+
+def save_data(data):
+    # Backup existing data
+    if os.path.exists(OUTPUT_JSON):
+        os.rename(OUTPUT_JSON, BACKUP_JSON)
+        print(f"📦 Created backup: {BACKUP_JSON}")
+
+    with open(OUTPUT_JSON, "w") as f:
+        json.dump(data, f, indent=2)
+        print(f"✅ Saved: {OUTPUT_JSON}")
 
 def main():
-    previous_urls = load_existing_urls()
-    crawl(BASE_URL)
-    save_to_csv(product_urls, previous_urls)
-    save_to_xml(product_urls, previous_urls)
-    print(f"✅ Saved {len(product_urls)} product URLs with 'is_new' flag.")
+    previous_data = load_previous_data()
+    all_data = []
+
+    for url in product_urls:
+        html = fetch_html(url)
+        if not html:
+            continue
+
+        product = extract_product_data(url, html)
+
+        # is_new comparison logic
+        old = previous_data.get(url)
+        product["is_new"] = old != product
+        all_data.append(product)
+
+    save_data(all_data)
 
 if __name__ == "__main__":
     main()
