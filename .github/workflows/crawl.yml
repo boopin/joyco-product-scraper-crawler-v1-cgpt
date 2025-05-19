@@ -1,0 +1,36 @@
+name: Run Crawler Daily
+
+on:
+  schedule:
+    # Runs at 1:00 AM Dubai time (UTC+4), so 21:00 UTC previous day
+    - cron: '0 21 * * *'
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run crawler script
+        run: |
+          python crawler.py
+
+      - name: Commit and push updated URLs
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add product_links.csv product_links.xml
+          git commit -m "Update product URLs - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
