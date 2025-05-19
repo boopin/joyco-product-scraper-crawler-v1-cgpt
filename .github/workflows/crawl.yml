@@ -40,10 +40,3 @@ jobs:
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Upload Google Merchant Feed as artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: google-merchant-feed
-          path: google_feed/google_merchant_feed.csv
-          retention-days: 7
