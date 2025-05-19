@@ -1,4 +1,3 @@
-
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -11,6 +10,7 @@ import re
 import random
 import json
 import sys
+import time
 
 # Set up logging
 logging.basicConfig(
@@ -31,18 +31,76 @@ GOOGLE_MERCHANT_CSV = "google_feed/google_merchant_feed.csv"
 os.makedirs("google_feed", exist_ok=True)
 logging.info(f"Ensured google_feed directory exists")
 
-# Google Product Category Mapping (basic - add more based on your products)
+# Comprehensive Google Product Category Mapping
+# Based on https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt
 CATEGORY_MAPPING = {
-    "Tableware": "6208",  # Home & Garden > Kitchen & Dining > Tableware
-    "Candles": "3655",    # Home & Garden > Decor > Candles & Home Fragrances
-    "Cushions": "635",    # Home & Garden > Decor > Throw Pillows
-    "Vases": "644",       # Home & Garden > Decor > Vases
-    "Wall Art": "639",    # Home & Garden > Decor > Artwork
-    "Side Tables": "6357" # Home & Garden > Furniture > Tables > Side Tables
+    # Tableware & Dining
+    "Tableware": "6208",                # Home & Garden > Kitchen & Dining > Tableware
+    "Cups": "6231",                     # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
+    "Mugs": "6231",                     # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
+    "Plates": "6210",                   # Home & Garden > Kitchen & Dining > Tableware > Plates
+    "Bowls": "6209",                    # Home & Garden > Kitchen & Dining > Tableware > Bowls
+    "Cutlery": "728",                   # Home & Garden > Kitchen & Dining > Tableware > Cutlery
+    "Glasses": "6228",                  # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Glasses & Tumblers
+    "Serving Plates": "734",            # Home & Garden > Kitchen & Dining > Tableware > Serving Trays & Platters
+    "Coffee": "6231",                   # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
+    "Tea": "6231",                      # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
+    "Dinnerware": "6208",               # Home & Garden > Kitchen & Dining > Tableware
+    "Dinner Set": "6208",               # Home & Garden > Kitchen & Dining > Tableware
+
+    # Home Decor
+    "Candles": "3655",                  # Home & Garden > Decor > Candles & Home Fragrances > Candles
+    "Candle Holders": "3309",           # Home & Garden > Decor > Candles & Home Fragrances > Candleholders
+    "Cushions": "635",                  # Home & Garden > Decor > Throw Pillows
+    "Decorative Cushions": "635",       # Home & Garden > Decor > Throw Pillows
+    "Vases": "644",                     # Home & Garden > Decor > Vases
+    "Wall Art": "639",                  # Home & Garden > Decor > Artwork
+    "Decorative Accents": "632",        # Home & Garden > Decor > Decorative Accents
+    "Decorative Trays": "7097",         # Home & Garden > Decor > Decorative Trays
+    "Centerpieces": "632",              # Home & Garden > Decor > Decorative Accents
+    "Table Linens": "7458",             # Home & Garden > Linens & Bedding > Table Linens
+    "Placemats": "7491",                # Home & Garden > Linens & Bedding > Table Linens > Placemats
+    "Napkins": "7492",                  # Home & Garden > Linens & Bedding > Table Linens > Napkins
+    "Table Runners": "7494",            # Home & Garden > Linens & Bedding > Table Linens > Table Runners
+    "Table Cloths": "7493",             # Home & Garden > Linens & Bedding > Table Linens > Tablecloths
+    
+    # Furniture
+    "Side Tables": "6357",              # Home & Garden > Furniture > Tables > Side Tables
+    "Coffee Tables": "6320",            # Home & Garden > Furniture > Tables > Coffee Tables
+    "Console Tables": "6321",           # Home & Garden > Furniture > Tables > Console Tables
+    
+    # Home Fragrance
+    "Home Fragrance": "3654",           # Home & Garden > Decor > Candles & Home Fragrances
+    "Diffusers": "5098",                # Home & Garden > Decor > Candles & Home Fragrances > Air Fresheners > Diffusers
+    "Room Sprays": "5099",              # Home & Garden > Decor > Candles & Home Fragrances > Air Fresheners > Room Sprays
+    
+    # Seasonal & Holiday Decor
+    "Holiday": "3617",                  # Home & Garden > Decor > Seasonal & Holiday Decorations
+    "Christmas": "5506",                # Home & Garden > Decor > Seasonal & Holiday Decorations > Christmas Decorations
+    "Ramadan": "3617",                  # Home & Garden > Decor > Seasonal & Holiday Decorations
+    "Eid": "3617",                      # Home & Garden > Decor > Seasonal & Holiday Decorations
+    "Special Occasion": "3617",         # Home & Garden > Decor > Seasonal & Holiday Decorations
+    
+    # Kitchen & Cooking
+    "Cookware": "672",                  # Home & Garden > Kitchen & Dining > Cookware
+    "Bakeware": "673",                  # Home & Garden > Kitchen & Dining > Bakeware
+    
+    # Gift Items
+    "Gift": "5394",                     # Occasions & Gifts > Gift Giving
+    "Gift Box": "5424",                 # Occasions & Gifts > Gift Giving > Gift Sets
+    
+    # Other Categories
+    "Accessories": "166",               # Home & Garden > Decor
+    "Home": "166",                      # Home & Garden > Decor
+    
+    # Brands (map brand names to most common product category)
+    "BITOSSI": "6208",                  # Home & Garden > Kitchen & Dining > Tableware
+    "Seletti": "632",                   # Home & Garden > Decor > Decorative Accents
+    "Joy & Co": "166"                   # Home & Garden > Decor
 }
 
-# Default fallback Google category for home decor
-DEFAULT_GOOGLE_CATEGORY = "635" # Home & Garden > Decor
+# Default Google category for home decor
+DEFAULT_GOOGLE_CATEGORY = "166"        # Home & Garden > Decor
 
 # User-Agent rotation for avoiding bot detection
 USER_AGENTS = [
@@ -57,12 +115,30 @@ USER_AGENTS = [
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
-def map_to_google_category(category_name):
-    """Map Joy&Co category to Google's product taxonomy"""
-    # Look for keywords in the category
+def map_to_google_category(category_name, title, brand):
+    """
+    Map Joy&Co category to Google's product taxonomy
+    Using a multi-level approach checking category, title keywords, and brand
+    """
+    # First try to match the exact category
+    if category_name in CATEGORY_MAPPING:
+        return CATEGORY_MAPPING[category_name]
+        
+    # Next, look for keywords in the category
     for keyword, google_id in CATEGORY_MAPPING.items():
         if keyword.lower() in category_name.lower():
             return google_id
+    
+    # If category doesn't match, try to find keywords in the title
+    for keyword, google_id in CATEGORY_MAPPING.items():
+        if len(keyword) > 3 and keyword.lower() in title.lower():  # Avoid short words
+            return google_id
+            
+    # If still not found, check if we can map by brand
+    if brand in CATEGORY_MAPPING:
+        return CATEGORY_MAPPING[brand]
+    
+    # Default fallback
     return DEFAULT_GOOGLE_CATEGORY
 
 def extract_product_data(url):
@@ -171,7 +247,7 @@ def extract_product_data(url):
         category = " > ".join(breadcrumbs) if breadcrumbs else "Uncategorized"
         
         # Map to Google product category
-        google_product_category = map_to_google_category(category)
+        google_product_category = map_to_google_category(category, title, brand)
         
         # Check if product is in stock
         stock_status = "in stock"
@@ -421,5 +497,4 @@ def main():
         print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
-    import time
     main()
