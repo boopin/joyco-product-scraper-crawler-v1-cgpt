@@ -1,14 +1,20 @@
 import json
-import pandas as pd
+import csv
 
-def main():
+def generate_product_feed():
     with open("product_feed.json", "r") as f:
         products = json.load(f)
 
-    df = pd.DataFrame(products)
+    with open("product_feed.csv", "w", newline="") as csvfile:
+        fieldnames = [
+            "id", "title", "description", "link", "image_link",
+            "availability", "price", "brand", "condition"
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
 
-    df.to_csv("product_feed.csv", index=False)
-    print("✅ CSV feed saved as product_feed.csv")
+        for product in products:
+            writer.writerow(product)
 
 if __name__ == "__main__":
-    main()
+    generate_product_feed()
