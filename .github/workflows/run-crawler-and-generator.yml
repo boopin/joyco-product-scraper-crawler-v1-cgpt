@@ -1,0 +1,37 @@
+name: Run Crawler and Generator
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run crawler.py
+        run: python crawler.py
+
+      - name: Run product_feed_generator.py
+        run: python product_feed_generator.py
+
+      - name: Upload product_feed.csv
+        uses: actions/upload-artifact@v3
+        with:
+          name: product_feed
+          path: product_feed.csv
