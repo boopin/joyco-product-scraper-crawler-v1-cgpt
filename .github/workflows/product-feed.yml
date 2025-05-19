@@ -28,13 +28,13 @@ jobs:
       run: python product_feed_generator.py
 
     - name: Upload CSV
-      uses: actions/upload-artifact@2c86c9a442b806f8c5dba4842169e7ae0c30c879
+      uses: actions/upload-artifact@v3
       with:
         name: product_feed_csv
         path: google_feed/product_feed.csv
 
     - name: Upload JSON
-      uses: actions/upload-artifact@2c86c9a442b806f8c5dba4842169e7ae0c30c879
+      uses: actions/upload-artifact@v3
       with:
         name: product_feed_json
         path: product_feed.json
