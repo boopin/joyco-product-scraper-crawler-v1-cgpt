@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 import os
 import logging
+import re
 
 # Set up logging
 logging.basicConfig(
@@ -25,26 +26,50 @@ logging.info(f"Ensured google_feed directory exists")
 def extract_product_data(url):
     try:
         logging.info(f"Extracting data from: {url}")
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        title = soup.find("h1").get_text(strip=True) if soup.find("h1") else "No Title"
-        description = soup.find("meta", attrs={"name": "description"})
-        description = description['content'].strip() if description else "No Description"
+        # Extract product ID from URL
+        product_id = url.split("/")[-1]
+        
+        # Get title from h2 tag
+        title = soup.find("h2").get_text(strip=True) if soup.find("h2") else "No Title"
+        logging.info(f"Title extracted: {title}")
+        
+        # Get full description from class="text-body" div in #description
+        description_div = soup.select_one("#description .text-body")
+        description = description_div.get_text(strip=True) if description_div else "No Description"
+        logging.info(f"Description extracted: {len(description)} characters")
+        
+        # Get image link from meta tag
         image_tag = soup.find("meta", property="og:image")
         image_link = image_tag['content'] if image_tag else ""
-        price = soup.find("meta", attrs={"itemprop": "price"})
-        price = price['content'] if price else "0.00"
+        
+        # Get price from the .price div (removes currency code)
+        price_div = soup.select_one(".price")
+        price = "0.00"
+        if price_div:
+            price_text = price_div.get_text(strip=True)
+            # Extract numeric price
+            price_match = re.search(r'(\d+(?:\.\d+)?)', price_text)
+            if price_match:
+                price = price_match.group(1)
+        logging.info(f"Price extracted: {price}")
+        
+        # Get brand from the p.pic-info
+        brand_tag = soup.select_one("p.pic-info")
+        brand = brand_tag.get_text(strip=True) if brand_tag else "Joy & Co"
+        logging.info(f"Brand extracted: {brand}")
 
         product_data = {
-            "id": url.split("/")[-1],
+            "id": product_id,
             "title": title,
             "description": description,
             "link": url,
             "image_link": image_link,
             "availability": "in stock",
             "price": f"{price} AED",
-            "brand": "Joy & Co",
+            "brand": brand,
             "condition": "new"
         }
         
@@ -142,8 +167,17 @@ def main():
         logging.info(f"Processed {len(products)} products out of {len(urls)} URLs")
 
         if products:
-            csv_success = generate_csv(products)
+            # Create a test product to debug CSV generation
+            test_product = products[0]
+            logging.info(f"Debug - First product: {test_product}")
+            
+            # First try to create just the XML file to confirm parsing works
             xml_success = generate_xml(products)
+            logging.info(f"XML generation: {'Success' if xml_success else 'Failed'}")
+            
+            # Then try CSV generation
+            csv_success = generate_csv(products)
+            logging.info(f"CSV generation: {'Success' if csv_success else 'Failed'}")
             
             if csv_success and xml_success:
                 print(f"✅ Successfully generated feed for {len(products)} products.")
