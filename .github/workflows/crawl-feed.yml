@@ -1,14 +1,16 @@
 name: Crawl and Generate Product Feed
 
 on:
-  workflow_dispatch:  # Trigger manually from GitHub UI
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
 
 jobs:
-  run-crawler-and-generator:
+  crawl_and_generate_feed:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Set up Python 3.10
@@ -21,22 +23,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run crawler.py
+      - name: Run Crawler Script
         run: python crawler.py
 
-      - name: Check if product_feed.json exists
-        run: |
-          if [ -f "product_feed.json" ]; then
-            echo "✅ product_feed.json found."
-          else
-            echo "❌ product_feed.json not found!" && exit 1
-          fi
-
-      - name: Run product_feed_generator.py
+      - name: Run Feed Generator Script
         run: python product_feed_generator.py
 
       - name: Upload CSV and XML Feed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: product-feeds
           path: |
