@@ -30,7 +30,7 @@ jobs:
           git add product_urls/product_links.csv product_urls/product_links.xml
           git add google_feed/product_feed.csv google_feed/product_feed.xml
           git add google_feed/google_merchant_feed.csv
-          git add meta_feed/facebook_product_feed.csv
+          git add meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml
           git commit -m "Update product feed - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
         env:
