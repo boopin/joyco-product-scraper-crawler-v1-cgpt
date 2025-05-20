@@ -332,7 +332,8 @@ def generate_csv(products):
         logging.info(f"Generating CSV at {CSV_OUTPUT} with {len(products)} products")
         
         # Define core fields for CSV export (excluding rich fields and arrays)
-        csv_fields = ["id", "title", "description", "link", "image_link", 
+        # Added additional_image_link to the standard CSV feed
+        csv_fields = ["id", "title", "description", "link", "image_link", "additional_image_link",
                       "availability", "price", "brand", "condition", "category"]
         
         # Convert all values to strings for CSV compatibility
