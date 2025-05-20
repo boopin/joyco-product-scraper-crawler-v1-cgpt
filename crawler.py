@@ -78,6 +78,11 @@ def load_existing_data():
     else:
         logging.info("No existing product file found. Starting fresh crawl.")
 
+# Placeholder function for sitemap processing - site doesn't have XML sitemap
+def process_sitemap():
+    logging.info("Site doesn't have XML sitemap - skipping sitemap processing")
+    return False
+
 # Crawl product listings with pagination
 def crawl_product_listings():
     logging.info("Crawling product listings pages")
@@ -152,11 +157,6 @@ def crawl_product_listings():
             
             # Be polite and wait
             time.sleep(random.uniform(1, 2))
-
-# Placeholder function for sitemap processing - site doesn't have XML sitemap
-def process_sitemap():
-    logging.info("Site doesn't have XML sitemap - skipping sitemap processing")
-    return False
 
 # Simple crawler without depth restrictions - similar to the original working crawler
 def simple_crawl(url):
