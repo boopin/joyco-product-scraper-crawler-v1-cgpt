@@ -78,59 +78,99 @@ def load_existing_data():
     else:
         logging.info("No existing product file found. Starting fresh crawl.")
 
-# Direct product page crawler to get any currently available products
+# Crawl product listings with pagination
 def crawl_product_listings():
     logging.info("Crawling product listings pages")
     
-    # Main product listing URLs
+    # Main product listing URLs - expanded to include more starting points
     product_pages = [
         "https://joyandco.com/products",
-        "https://joyandco.com/products?data_from=new_arrival&page=1"
+        "https://joyandco.com/flash-deals",
+        "https://joyandco.com/new-arrivals",
+        "https://joyandco.com/category/tableware", 
+        "https://joyandco.com/category/home-decor",
+        "https://joyandco.com/category/furniture",
+        "https://joyandco.com/category/gift-accessories"
     ]
     
-    # Look through product categories
-    for page_url in product_pages:
-        try:
-            logging.info(f"Processing listing page: {page_url}")
-            headers = {
-                "User-Agent": get_random_user_agent(),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-            }
+    # Crawl each starting page and handle pagination
+    for start_page in product_pages:
+        page_url = start_page
+        page_num = 1
+        has_next_page = True
+        
+        while has_next_page:
+            try:
+                logging.info(f"Processing listing page: {page_url} (Page {page_num})")
+                headers = {
+                    "User-Agent": get_random_user_agent(),
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                }
+                
+                response = requests.get(page_url, headers=headers, timeout=15)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Look for product cards with links
+                    product_links = soup.select(".products a.btn-shopnow, .pro-detail a")
+                    if product_links:
+                        for product_link in product_links:
+                            href = product_link.get('href')
+                            if href and "/product/" in href:
+                                full_url = urljoin(BASE_URL, href)
+                                if full_url not in visited_urls:
+                                    logging.info(f"Found product URL: {full_url}")
+                                    visited_urls.add(full_url)
+                                    product_urls.add(full_url)
+                    
+                    # Check for pagination and find next page link
+                    has_next_page = False
+                    pagination = soup.select(".page-item a")
+                    for page_link in pagination:
+                        if page_link.get_text().strip() == str(page_num + 1):
+                            next_page_url = urljoin(BASE_URL, page_link.get('href'))
+                            page_url = next_page_url
+                            page_num += 1
+                            has_next_page = True
+                            break
+                            
+                    # Also look for "Next" link
+                    next_links = soup.select(".page-item a[rel='next']")
+                    if next_links and not has_next_page:
+                        next_page_url = urljoin(BASE_URL, next_links[0].get('href'))
+                        page_url = next_page_url
+                        page_num += 1
+                        has_next_page = True
+                else:
+                    logging.warning(f"Failed to access listing page: {page_url}, status: {response.status_code}")
+                    has_next_page = False
+                    
+            except Exception as e:
+                logging.error(f"Error processing listing page {page_url}: {e}")
+                has_next_page = False
             
-            response = requests.get(page_url, headers=headers, timeout=15)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                
-                # Look for product cards with links
-                for product_link in soup.select(".products a.btn-shopnow"):
-                    href = product_link.get('href')
-                    if href and "/product/" in href:
-                        full_url = urljoin(BASE_URL, href)
-                        if full_url not in visited_urls:
-                            logging.info(f"Found product URL: {full_url}")
-                            visited_urls.add(full_url)
-                            product_urls.add(full_url)
-            else:
-                logging.warning(f"Failed to access listing page: {page_url}, status: {response.status_code}")
-                
-        except Exception as e:
-            logging.error(f"Error processing listing page {page_url}: {e}")
-        
-        # Be polite and wait
-        time.sleep(random.uniform(1, 2))
+            # Be polite and wait
+            time.sleep(random.uniform(1, 2))
 
-# Recursive crawler to find internal product links
-def crawl(url, depth=0, max_depth=3):
-    if depth > max_depth:
-        return
-        
+# Placeholder function for sitemap processing - site doesn't have XML sitemap
+def process_sitemap():
+    logging.info("Site doesn't have XML sitemap - skipping sitemap processing")
+    return False
+
+# Simple crawler without depth restrictions - similar to the original working crawler
+def simple_crawl(url):
     try:
+        # Don't crawl if we've already visited this URL
+        if url in visited_urls:
+            return
+            
         # Add a random delay between 1-2 seconds to be polite to the server
         time.sleep(random.uniform(1, 2))
         
         # Log the URL we're crawling
-        logging.info(f"Crawling URL (depth {depth}): {url}")
+        logging.info(f"Crawling URL: {url}")
+        visited_urls.add(url)
         
         headers = {
             "User-Agent": get_random_user_agent(),
@@ -149,18 +189,7 @@ def crawl(url, depth=0, max_depth=3):
             
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # First, look for product links specifically
-        product_links = soup.select("a.btn-shopnow, .pro-detail a")
-        for link_tag in product_links:
-            href = link_tag.get('href')
-            if href and "/product/" in href:
-                full_url = urljoin(BASE_URL, href)
-                if full_url not in visited_urls:
-                    logging.info(f"Found product URL: {full_url}")
-                    visited_urls.add(full_url)
-                    product_urls.add(full_url)
-        
-        # Then look at all links for further crawling
+        # Find all links
         all_links = soup.find_all("a", href=True)
         for link_tag in all_links:
             href = link_tag['href']
@@ -170,15 +199,14 @@ def crawl(url, depth=0, max_depth=3):
                 
             full_url = urljoin(BASE_URL, href.split("?")[0])
             if is_valid_url(full_url) and full_url.startswith(BASE_URL) and full_url not in visited_urls:
-                visited_urls.add(full_url)
                 
                 # Process product URLs
                 if "/product/" in full_url:
                     logging.info(f"Found product URL: {full_url}")
                     product_urls.add(full_url)
-                # Continue crawling for non-product pages
-                elif any(pattern in full_url for pattern in ["/products", "/category", "/flash-deals"]):
-                    crawl(full_url, depth + 1, max_depth)
+                
+                # Continue crawling non-product pages
+                simple_crawl(full_url)
                     
     except Exception as e:
         logging.error(f"Error crawling {url}: {e}")
@@ -214,20 +242,30 @@ def main():
     # Load existing data first
     load_existing_data()
     
-    # Crawl product listings first to get direct product URLs
+    # Try to process sitemap first (fastest method if available)
+    sitemap_found = process_sitemap()
+    
+    # Crawl product listings with pagination
     crawl_product_listings()
     
-    # Then crawl the site more broadly
-    starting_urls = [
-        BASE_URL,
-        "https://joyandco.com/products",
-        "https://joyandco.com/flash-deals",
-        "https://joyandco.com/new-arrivals",
-    ]
-    
-    for start_url in starting_urls:
-        if start_url not in visited_urls:
-            crawl(start_url)
+    # If we still don't have enough products, use simple crawler
+    if len(product_urls) < 100:
+        logging.info(f"Only found {len(product_urls)} products. Using simple crawler for more thorough search.")
+        starting_urls = [
+            BASE_URL,
+            "https://joyandco.com/products",
+            "https://joyandco.com/flash-deals",
+            "https://joyandco.com/new-arrivals",
+            "https://joyandco.com/category/tableware",
+            "https://joyandco.com/category/home-decor",
+            "https://joyandco.com/category/furniture",
+            "https://joyandco.com/category/gift-accessories"
+        ]
+        
+        # Use the simpler approach that worked in the original crawler
+        for start_url in starting_urls:
+            if start_url not in visited_urls:
+                simple_crawl(start_url)
     
     # Log the counts
     logging.info(f"Found {len(product_urls)} product URLs out of {len(visited_urls)} total URLs visited")
