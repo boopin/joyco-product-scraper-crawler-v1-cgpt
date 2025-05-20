@@ -96,7 +96,12 @@ CATEGORY_MAPPING = {
     # Brands (map brand names to most common product category)
     "BITOSSI": "6208",                  # Home & Garden > Kitchen & Dining > Tableware
     "Seletti": "632",                   # Home & Garden > Decor > Decorative Accents
-    "Joy & Co": "166"                   # Home & Garden > Decor
+    "Joy & Co": "166",                  # Home & Garden > Decor
+    "KERSTEN": "644",                   # Home & Garden > Decor > Vases (for many KERSTEN products)
+    "KLIMCHI": "6228",                  # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Glasses & Tumblers
+    "ANNA + NINA": "6208",              # Home & Garden > Kitchen & Dining > Tableware
+    "WERNS": "644",                     # Home & Garden > Decor > Vases
+    "EDION": "632"                      # Home & Garden > Decor > Decorative Accents
 }
 
 # Default Google category for home decor
@@ -184,6 +189,17 @@ def extract_product_data(url):
         description = description_div.get_text(strip=True) if description_div else "No Description"
         logging.info(f"Description extracted: {len(description)} characters")
         
+        # Fix the image_link extraction - use the actual product image instead of meta tag
+        primary_image_element = soup.select_one(".cz-preview-item.active img.cz-image-zoom")
+        if primary_image_element and 'src' in primary_image_element.attrs:
+            image_link = primary_image_element['src']
+        else:
+            # Fallback to the first image if active not found
+            image_element = soup.select_one(".cz-preview-item img.cz-image-zoom")
+            image_link = image_element['src'] if image_element and 'src' in image_element.attrs else ""
+        
+        logging.info(f"Primary image extracted: {image_link}")
+        
         # Get editor notes and brand info for richer description
         editor_notes_div = soup.select_one("#editor_notes .text-body")
         brand_info_div = soup.select_one("#about_the_brand .text-body")
@@ -199,19 +215,13 @@ def extract_product_data(url):
             rich_description += f"\n\nABOUT THE BRAND:\n{brand_info}"
         
         # Get all product images
-        image_elements = soup.select(".cz-preview-item img")
+        image_elements = soup.select(".cz-preview-item img.cz-image-zoom")
         all_images = []
         for img in image_elements:
             if 'src' in img.attrs:
                 if img['src'] not in all_images:  # Avoid duplicates
                     all_images.append(img['src'])
         
-        # Get primary image from meta tag
-        image_tag = soup.find("meta", property="og:image")
-        image_link = image_tag['content'] if image_tag else ""
-        if not image_link and all_images:
-            image_link = all_images[0]  # Use first image as fallback
-            
         # Remove primary image from additional_images to avoid duplication
         additional_images = [img for img in all_images if img != image_link]
         
@@ -254,6 +264,18 @@ def extract_product_data(url):
         out_of_stock_element = soup.select_one(".out-of-stock-label")
         if out_of_stock_element:
             stock_status = "out of stock"
+        
+        # Look for "Last X left" text to determine low inventory
+        last_items_text = ""
+        price_span = price_div.select_one("span.d-block") if price_div else None
+        if price_span:
+            last_items_text = price_span.get_text(strip=True)
+            if "last" in last_items_text.lower() and "left" in last_items_text.lower():
+                # Extract the number
+                num_match = re.search(r'(\d+)', last_items_text)
+                if num_match and int(num_match.group(1)) <= 3:
+                    # Add a note about limited availability
+                    stock_status = "limited availability"
             
         # Extract variants if available (for future use)
         variants = []
