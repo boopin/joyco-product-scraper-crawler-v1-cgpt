@@ -17,27 +17,38 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install requests pillow  # Add these for image analysis
       - name: Create necessary directories
         run: |
           mkdir -p product_urls
           mkdir -p google_feed
           mkdir -p meta_feed
+          mkdir -p validation_reports
+          mkdir -p inventory_history
+          mkdir -p image_analysis  # Add directory for image analysis results
       - name: Run crawler script
         run: python crawler.py
       - name: Run feed generator
         run: python product_feed_generator.py
       - name: Run Meta Shopping feed generator
         run: python meta_feed_generator.py
+      - name: Run inventory tracker
+        run: python inventory_tracker.py
+      - name: Run image analysis  # New step for image analysis
+        run: python image_analyzer.py
       - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
           # Add files only if they exist
-          for file in product_urls/product_links.csv product_urls/product_links.xml google_feed/product_feed.csv google_feed/product_feed.xml google_feed/google_merchant_feed.csv meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml; do
-            if [ -f "$file" ]; then
-              git add "$file"
-            fi
+          for file in product_urls/product_links.csv product_urls/product_links.xml \
+                     google_feed/product_feed.csv google_feed/product_feed.xml \
+                     google_feed/google_merchant_feed.csv \
+                     meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml \
+                     validation_reports/*.json inventory_history/*.csv inventory_history/*.json \
+                     image_analysis/*.csv; do
+            git add $file 2>/dev/null || true
           done
           
           git commit -m "Update product feed - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
