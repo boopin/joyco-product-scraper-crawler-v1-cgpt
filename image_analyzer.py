@@ -1,42 +1,29 @@
 import requests
-from PIL import Image
-from io import BytesIO
 import csv
+import os
+import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+import json
+from urllib.parse import urljoin, urlparse
+from datetime import datetime
 
-# List of image URLs to analyze
-# You can modify this list or load from a file
-IMAGE_URLS = [
-    # Problematic images
-    ("azure-tower-vase-usiPgp", "https://joyandco.com/storage/app/public/product/2025-05-11-68206bfe624fb.webp", "issue"),
-    ("bold-stripes-vase-IErdVl", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf70ede34b1.webp", "issue"),
-    ("bubble-bliss-small-green-vase-fELe5t", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf7306134f3.webp", "issue"),
-    ("cherry-blossom-lidded-vase-lKXu7G", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf8ba748b21.webp", "issue"),
-    ("classic-yellow-porcelain-vase-m-oMwtLG", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf400f60770.webp", "issue"),
-    ("disks-vase-lLL4HA", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf459de769a.webp", "issue"),
-    ("sugar-bowl-KoIAB8", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf585e72c4b.webp", "issue"),
-    ("sunshine-glass-vase-Gqvfu5", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf606f10cd6.webp", "issue"),
-    ("tangerine-twist-vase-m7G1iP", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf6e3cef58c.webp", "issue"),
-    ("whimsy-jar-PPY9tL", "https://joyandco.com/storage/app/public/product/2025-03-20-67dbb78be8e8b.webp", "issue"),
-    
-    # Add some working images for comparison
-    ("abracadabra-coffee-cups-set-xUdyr3", "https://joyandco.com/storage/app/public/product/2025-03-03-67c6307a9c180.webp", "success"),
-    ("abracadabra-destino-dinner-plate-ZwL71a", "https://joyandco.com/storage/app/public/product/2025-02-19-67b5a826f01ca.webp", "success"),
-    ("aurora-vase-QtwQO7", "https://joyandco.com/storage/app/public/product/2025-02-26-67bf6f23a92af.webp", "success"),
-    ("skyline-vase-9yZABA", "https://joyandco.com/storage/app/public/product/2025-05-11-68206c822381c.webp", "success"),
-    ("sugarline-vase-9rFoY2", "https://joyandco.com/storage/app/public/product/2025-05-11-68206aee2d7ac.webp", "success")
-]
+# File paths
+INPUT_FEED = "google_feed/google_merchant_feed.csv"
+OUTPUT_DIR = "image_analysis"
+OUTPUT_FILE = f"{OUTPUT_DIR}/image_analysis_results.csv"
+ISSUES_FILE = f"{OUTPUT_DIR}/image_processing_issues.csv"
+SUMMARY_FILE = f"{OUTPUT_DIR}/image_analysis_summary.md"
 
-OUTPUT_FILE = "image_analysis.csv"
+# Make sure output directory exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Configuration
+MAX_WORKERS = 5
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
-def analyze_image(product_id, url, status):
-    """Analyze a single image and return its properties"""
+def check_image_dimensions(url):
+    """Check if an image exists and get basic HTTP information about it"""
     try:
-        # Print progress
-        print(f"Processing: {url}")
-        
         # Set headers to mimic a browser
         headers = {
             "User-Agent": USER_AGENT,
@@ -45,80 +32,234 @@ def analyze_image(product_id, url, status):
             "Referer": "https://joyandco.com/",
         }
         
-        # Download the image
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()  # Raise exception for 4XX/5XX responses
+        # Start with a HEAD request to get headers without downloading the full image
+        response = requests.head(url, headers=headers, timeout=10)
+        response.raise_for_status()
         
-        # Get file size
-        file_size_kb = len(response.content) / 1024
+        # Get content type and content length
+        content_type = response.headers.get('Content-Type', '')
+        content_length = int(response.headers.get('Content-Length', 0))
         
-        # Load the image
-        img = Image.open(BytesIO(response.content))
-        
-        # Extract information
-        width, height = img.size
-        aspect_ratio = width / height if height > 0 else 0
-        format_type = img.format
-        mode = img.mode
-        
-        # Extract filename from URL
-        filename = url.split('/')[-1]
-        
-        # Get data about transparency
-        has_transparency = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
-        
-        # Get more detailed format info if available
-        format_details = getattr(img, 'format_description', '') or ''
+        # Check if it's an image
+        is_image = content_type.startswith('image/')
         
         return {
-            "product_id": product_id,
             "url": url,
-            "status": status,
-            "width": width,
-            "height": height,
-            "aspect_ratio": round(aspect_ratio, 2),
-            "file_size_kb": round(file_size_kb, 2),
-            "format": format_type,
-            "color_mode": mode,
-            "has_transparency": has_transparency,
-            "format_details": format_details,
-            "filename": filename,
+            "exists": True,
+            "content_type": content_type,
+            "content_length": content_length,
+            "is_image": is_image,
+            "file_size_kb": round(content_length / 1024, 2),
+            "status_code": response.status_code,
             "result": "success"
         }
     except Exception as e:
         # Return error information if something goes wrong
         return {
-            "product_id": product_id,
             "url": url,
-            "status": status,
-            "width": 0,
-            "height": 0,
-            "aspect_ratio": 0,
+            "exists": False,
+            "content_type": "",
+            "content_length": 0,
+            "is_image": False,
             "file_size_kb": 0,
-            "format": "",
-            "color_mode": "",
-            "has_transparency": "",
-            "format_details": "",
-            "filename": url.split('/')[-1],
+            "status_code": getattr(e, 'response', {}).get('status_code', 0),
             "result": f"error: {str(e)}"
         }
 
-def main():
-    # Define CSV columns
-    fieldnames = [
-        "product_id", "status", "result", "width", "height", "aspect_ratio", 
-        "file_size_kb", "format", "color_mode", "has_transparency", 
-        "format_details", "filename", "url"
-    ]
+def load_product_image_urls():
+    """Load product IDs and image URLs from the merchant feed"""
+    products = []
     
-    # Analyze images in parallel
+    try:
+        with open(INPUT_FEED, 'r', encoding='utf-8', newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if 'id' in row and 'image_link' in row:
+                    products.append({
+                        'id': row['id'],
+                        'url': row['image_link'],
+                        'title': row.get('title', ''),
+                        'brand': row.get('brand', '')
+                    })
+    except Exception as e:
+        print(f"Error loading merchant feed: {e}")
+        return []
+    
+    return products
+
+def analyze_images():
+    """Analyze images in the merchant feed"""
+    print("Starting image analysis...")
+    
+    # Load products from merchant feed
+    products = load_product_image_urls()
+    print(f"Loaded {len(products)} products from merchant feed")
+    
+    if not products:
+        print("No products found. Please check the input file.")
+        return []
+    
+    # Analyze each image
     results = []
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(analyze_image, product_id, url, status) 
-                  for product_id, url, status in IMAGE_URLS]
+    for product in products:
+        print(f"Checking: {product['id']} - {product['url']}")
+        image_info = check_image_dimensions(product['url'])
         
-        for future in futures:
-            results.append(future.result())
+        # Extract filename from URL
+        filename = product['url'].split('/')[-1]
+        
+        # Extract date from filename if present
+        date = ""
+        import re
+        date_match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+        if date_match:
+            date = date_match.group(1)
+        
+        # Create result
+        result = {
+            "product_id": product['id'],
+            "title": product.get('title', ''),
+            "brand": product.get('brand', ''),
+            "url": product['url'],
+            "exists": image_info['exists'],
+            "content_type": image_info['content_type'],
+            "file_size_kb": image_info['file_size_kb'],
+            "status_code": image_info['status_code'],
+            "filename": filename,
+            "date": date,
+            "result": image_info['result']
+        }
+        
+        results.append(result)
+        
+        # Be polite to the server
+        time.sleep(0.5)
+    
+    return results
+
+def find_potential_issues(results):
+    """Identify images that might have issues based on their properties"""
+    potential_issues = []
+    
+    for result in results:
+        issues = []
+        
+        # Skip images that already failed to load
+        if "error" in result["result"]:
+            issues.append(f"Failed to load image: {result['result']}")
+            potential_issues.append({
+                "product_id": result["product_id"],
+                "issue_title": "Image loading error",
+                "details": result["result"]
+            })
+            continue
+        
+        # Check if it exists
+        if not result["exists"]:
+            issues.append("Image does not exist")
+            potential_issues.append({
+                "product_id": result["product_id"],
+                "issue_title": "Image does not exist",
+                "details": f"Status code: {result['status_code']}"
+            })
+            continue
+        
+        # Check content type
+        if not result["content_type"].startswith('image/'):
+            issues.append(f"Not an image: {result['content_type']}")
+            potential_issues.append({
+                "product_id": result["product_id"],
+                "issue_title": "Not an image",
+                "details": result["content_type"]
+            })
+            
+        # Check file size - too large or too small
+        if result["file_size_kb"] > 5120:  # > 5MB
+            issues.append(f"File size too large: {result['file_size_kb']} KB (max 5120 KB)")
+            potential_issues.append({
+                "product_id": result["product_id"],
+                "issue_title": "File size too large",
+                "details": f"{result['file_size_kb']} KB (max 5120 KB)"
+            })
+        elif result["file_size_kb"] < 10:  # < 10KB
+            issues.append(f"File size too small: {result['file_size_kb']} KB (min 10 KB)")
+            potential_issues.append({
+                "product_id": result["product_id"],
+                "issue_title": "File size too small",
+                "details": f"{result['file_size_kb']} KB (min 10 KB)"
+            })
+            
+        # Add any other checks as needed
+    
+    return potential_issues
+
+def generate_summary_report(results, issues):
+    """Generate a markdown summary report"""
+    with open(SUMMARY_FILE, "w", encoding="utf-8") as f:
+        f.write("# Image Analysis Summary\n\n")
+        
+        # General stats
+        success_count = sum(1 for r in results if "error" not in r["result"])
+        error_count = len(results) - success_count
+        
+        f.write(f"**Total Images Analyzed:** {len(results)}\n")
+        f.write(f"**Successfully Loaded:** {success_count}\n")
+        f.write(f"**Loading Errors:** {error_count}\n")
+        f.write(f"**Potential Issues Found:** {len(issues)}\n\n")
+        
+        # Content type stats
+        content_types = {}
+        for r in results:
+            content_type = r["content_type"]
+            if content_type:
+                content_types[content_type] = content_types.get(content_type, 0) + 1
+        
+        f.write("## Content Types\n\n")
+        for ct, count in content_types.items():
+            f.write(f"* {ct}: {count} images ({(count/len(results)*100):.1f}%)\n")
+        
+        # Date stats
+        dates = {}
+        for r in results:
+            date = r["date"]
+            if date:
+                dates[date] = dates.get(date, 0) + 1
+        
+        f.write("\n## Image Dates\n\n")
+        for date, count in sorted(dates.items()):
+            f.write(f"* {date}: {count} images ({(count/len(results)*100):.1f}%)\n")
+        
+        # Most common issues
+        if issues:
+            issue_types = {}
+            for issue in issues:
+                issue_type = issue["issue_title"]
+                issue_types[issue_type] = issue_types.get(issue_type, 0) + 1
+            
+            f.write("\n## Most Common Issues\n\n")
+            for issue_type, count in sorted(issue_types.items(), key=lambda x: x[1], reverse=True):
+                f.write(f"* {issue_type}: {count} images\n")
+            
+            f.write("\n## Products with Potential Issues\n\n")
+            f.write("| Product ID | Issue |\n")
+            f.write("|------------|-------|\n")
+            
+            for issue in issues[:20]:  # Show top 20 issues
+                f.write(f"| {issue['product_id']} | {issue['issue_title']} |\n")
+            
+            if len(issues) > 20:
+                f.write(f"\n*...and {len(issues) - 20} more issues (see CSV file for complete list)*\n")
+
+def main():
+    # Analyze images
+    results = analyze_images()
+    
+    # Define CSV columns for results
+    fieldnames = [
+        "product_id", "title", "brand", "url", "exists", 
+        "content_type", "file_size_kb", "status_code", 
+        "filename", "date", "result"
+    ]
     
     # Write results to CSV
     with open(OUTPUT_FILE, mode='w', newline='', encoding='utf-8') as file:
@@ -127,31 +268,30 @@ def main():
         for result in results:
             writer.writerow(result)
     
-    print(f"\nAnalysis complete. Results saved to {OUTPUT_FILE}")
+    # Find potential issues
+    issues = find_potential_issues(results)
+    
+    # Write issues to CSV
+    with open(ISSUES_FILE, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=["product_id", "issue_title", "details"])
+        writer.writeheader()
+        for issue in issues:
+            writer.writerow(issue)
+    
+    # Generate summary report
+    generate_summary_report(results, issues)
     
     # Print summary
-    success_count = sum(1 for r in results if r["result"] == "success")
+    print(f"\nAnalysis complete. Results saved to {OUTPUT_FILE}")
+    print(f"Potential issues saved to {ISSUES_FILE}")
+    print(f"Summary report saved to {SUMMARY_FILE}")
+    
+    # Print stats
+    success_count = sum(1 for r in results if "error" not in r["result"])
     error_count = len(results) - success_count
     print(f"Successfully analyzed: {success_count} images")
     print(f"Errors: {error_count} images")
-    
-    # Print stats on issues vs success
-    issue_images = [r for r in results if r["status"] == "issue" and r["result"] == "success"]
-    success_images = [r for r in results if r["status"] == "success" and r["result"] == "success"]
-    
-    if issue_images and success_images:
-        print("\nComparison of Issue vs Success Images:")
-        
-        avg_width_issue = sum(img["width"] for img in issue_images) / len(issue_images)
-        avg_height_issue = sum(img["height"] for img in issue_images) / len(issue_images)
-        avg_size_issue = sum(img["file_size_kb"] for img in issue_images) / len(issue_images)
-        
-        avg_width_success = sum(img["width"] for img in success_images) / len(success_images)
-        avg_height_success = sum(img["height"] for img in success_images) / len(success_images)
-        avg_size_success = sum(img["file_size_kb"] for img in success_images) / len(success_images)
-        
-        print(f"Issue Images (Avg): {avg_width_issue:.0f}x{avg_height_issue:.0f} px, {avg_size_issue:.2f} KB")
-        print(f"Success Images (Avg): {avg_width_success:.0f}x{avg_height_success:.0f} px, {avg_size_success:.2f} KB")
+    print(f"Potential issues found: {len(issues)} issues")
 
 if __name__ == "__main__":
     main()
