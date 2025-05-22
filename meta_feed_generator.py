@@ -1,15 +1,27 @@
 import csv
-import os
-import logging
 import json
+import logging
+import os
+import sys
+import xml.etree.ElementTree as ET
+import xml.dom.minidom as minidom
 from datetime import datetime
 
-# Function to generate Meta Shopping feed from existing product data
-def generate_meta_shopping_feed(products, output_file="meta_feed/facebook_product_feed.csv"):
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+# Generate Meta Shopping feed in CSV format
+def generate_meta_csv_feed(products, output_file="meta_feed/facebook_product_feed.csv"):
     """
     Generate a Facebook/Meta product feed CSV file from product data
     """
-    logging.info(f"Generating Meta Shopping feed at {output_file} with {len(products)} products")
+    logging.info(f"Generating Meta Shopping CSV feed at {output_file} with {len(products)} products")
     
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -31,8 +43,154 @@ def generate_meta_shopping_feed(products, output_file="meta_feed/facebook_produc
         "fb_product_category",     # Optional: Facebook product category
         "sale_price",              # Optional: Sale price
         "inventory",               # Optional: Number of items in stock
+        "item_group_id"            # Optional: Group variants of the same product
     ]
     
+    # Map Google categories to Facebook categories
+    meta_products = map_products_for_meta(products)
+    
+    try:
+        with open(output_file, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=meta_fields)
+            writer.writeheader()
+            
+            for product in meta_products:
+                writer.writerow(product)
+        
+        # Verify file was created
+        if os.path.exists(output_file):
+            file_size = os.path.getsize(output_file)
+            logging.info(f"Meta Shopping CSV feed successfully created at {output_file}, size: {file_size} bytes")
+            return True
+        else:
+            logging.error(f"Meta Shopping CSV feed was not created at {output_file}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error generating Meta Shopping CSV feed: {e}")
+        return False
+
+# Generate Meta Shopping feed in XML/RSS format
+def generate_meta_xml_feed(products, output_file="meta_feed/facebook_product_feed.xml"):
+    """
+    Generate a Facebook/Meta product feed XML file from product data
+    """
+    logging.info(f"Generating Meta Shopping XML feed at {output_file} with {len(products)} products")
+    
+    # Create directory if it doesn't exist
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    # Map Google categories to Facebook categories
+    meta_products = map_products_for_meta(products)
+    
+    try:
+        # Create XML structure using RSS 2.0 format
+        rss = ET.Element("rss")
+        rss.set("version", "2.0")
+        rss.set("xmlns:g", "http://base.google.com/ns/1.0")
+        
+        channel = ET.SubElement(rss, "channel")
+        
+        # Add feed metadata
+        title = ET.SubElement(channel, "title")
+        title.text = "Joy&Co Product Feed for Meta Shopping"
+        
+        description = ET.SubElement(channel, "description")
+        description.text = "Product feed for Joy&Co products compatible with Meta Shopping"
+        
+        link = ET.SubElement(channel, "link")
+        link.text = "https://joyandco.com"
+        
+        # Add current date and time
+        pubDate = ET.SubElement(channel, "pubDate")
+        pubDate.text = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+        
+        # Add products
+        for product in meta_products:
+            item = ET.SubElement(channel, "item")
+            
+            # Add required fields
+            for field in ["id", "title", "description", "link"]:
+                element = ET.SubElement(item, "g:" + field)
+                element.text = product.get(field, "")
+            
+            # Add price
+            price_elem = ET.SubElement(item, "g:price")
+            price_elem.text = product.get("price", "")
+            
+            # Add sale price if available
+            if product.get("sale_price"):
+                sale_price_elem = ET.SubElement(item, "g:sale_price")
+                sale_price_elem.text = product.get("sale_price", "")
+            
+            # Add image link
+            image_link = ET.SubElement(item, "g:image_link")
+            image_link.text = product.get("image_link", "")
+            
+            # Add additional image link if available
+            if product.get("additional_image_link"):
+                additional_image = ET.SubElement(item, "g:additional_image_link")
+                additional_image.text = product.get("additional_image_link", "")
+            
+            # Add brand
+            brand = ET.SubElement(item, "g:brand")
+            brand.text = product.get("brand", "")
+            
+            # Add availability
+            availability = ET.SubElement(item, "g:availability")
+            availability.text = product.get("availability", "")
+            
+            # Add condition
+            condition = ET.SubElement(item, "g:condition")
+            condition.text = product.get("condition", "")
+            
+            # Add Google product category if available
+            if product.get("google_product_category"):
+                g_category = ET.SubElement(item, "g:google_product_category")
+                g_category.text = product.get("google_product_category", "")
+                
+            # Add Facebook product category if available
+            if product.get("fb_product_category"):
+                fb_category = ET.SubElement(item, "g:fb_product_category")
+                fb_category.text = product.get("fb_product_category", "")
+                
+            # Add inventory if available
+            if product.get("inventory"):
+                inventory = ET.SubElement(item, "g:inventory")
+                inventory.text = product.get("inventory", "")
+                
+            # Add item_group_id if available
+            if product.get("item_group_id"):
+                item_group = ET.SubElement(item, "g:item_group_id")
+                item_group.text = product.get("item_group_id", "")
+        
+        # Convert to string with pretty formatting
+        rough_string = ET.tostring(rss, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        pretty_xml = reparsed.toprettyxml(indent="  ")
+        
+        # Write to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(pretty_xml)
+        
+        # Verify file was created
+        if os.path.exists(output_file):
+            file_size = os.path.getsize(output_file)
+            logging.info(f"Meta Shopping XML feed successfully created at {output_file}, size: {file_size} bytes")
+            return True
+        else:
+            logging.error(f"Meta Shopping XML feed was not created at {output_file}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Error generating Meta Shopping XML feed: {e}")
+        return False
+
+# Map products to Meta format
+def map_products_for_meta(products):
+    """
+    Map product data to Meta Shopping format
+    """
     # Map availability to Meta format
     availability_mapping = {
         "in stock": "in stock",
@@ -82,63 +240,47 @@ def generate_meta_shopping_feed(products, output_file="meta_feed/facebook_produc
         "5424": "gift_giving"  # Gift Sets
     }
     
-    try:
-        with open(output_file, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=meta_fields)
-            writer.writeheader()
-            
-            for product in products:
-                # Map product data to Meta Shopping format
-                meta_product = {
-                    "id": product["id"],
-                    "title": product["title"],
-                    "description": product["description"],
-                    "availability": availability_mapping.get(product["availability"], "in stock"),
-                    "condition": product["condition"],
-                    "price": product["price"],
-                    "link": product["link"],
-                    "image_link": product["image_link"],
-                    "brand": product["brand"],
-                    "additional_image_link": product.get("additional_image_link", ""),
-                    "google_product_category": product.get("google_product_category", ""),
-                    "fb_product_category": fb_category_mapping.get(product.get("google_product_category", ""), ""),
-                    "sale_price": "",  # Not available in current data
-                    "inventory": ""    # Not available in current data
-                }
-                
-                writer.writerow(meta_product)
+    meta_products = []
+    
+    for product in products:
+        # Map product data to Meta Shopping format
+        meta_product = {
+            "id": product.get("id", ""),
+            "title": product.get("title", ""),
+            "description": product.get("description", ""),
+            "availability": availability_mapping.get(product.get("availability", ""), "in stock"),
+            "condition": product.get("condition", "new"),
+            "price": product.get("price", ""),
+            "link": product.get("link", ""),
+            "image_link": product.get("image_link", ""),
+            "brand": product.get("brand", ""),
+            "additional_image_link": product.get("additional_image_link", ""),
+            "google_product_category": product.get("google_product_category", ""),
+            "fb_product_category": fb_category_mapping.get(product.get("google_product_category", ""), ""),
+            "item_group_id": product.get("item_group_id", "")
+        }
         
-        # Verify file was created
-        if os.path.exists(output_file):
-            file_size = os.path.getsize(output_file)
-            logging.info(f"Meta Shopping feed successfully created at {output_file}, size: {file_size} bytes")
-            return True
+        # Add sale price if available
+        if product.get("has_sale") and product.get("sale_price"):
+            meta_product["sale_price"] = product.get("sale_price", "")
         else:
-            logging.error(f"Meta Shopping feed was not created at {output_file}")
-            return False
-            
-    except Exception as e:
-        logging.error(f"Error generating Meta Shopping feed: {e}")
-        return False
+            meta_product["sale_price"] = ""
+        
+        # Add inventory field (not available in current data)
+        meta_product["inventory"] = ""
+        
+        meta_products.append(meta_product)
+        
+    return meta_products
 
-# If this script is run directly, load product data from XML feed and generate Meta feed
-if __name__ == "__main__":
-    import xml.etree.ElementTree as ET
-    import sys
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    
+# Main function to generate both CSV and XML feeds
+def main():
     logging.info("Starting Meta Shopping feed generator")
     
     # Path to existing XML product feed
     XML_INPUT = "google_feed/product_feed.xml"
-    META_OUTPUT = "meta_feed/facebook_product_feed.csv"
+    META_CSV_OUTPUT = "meta_feed/facebook_product_feed.csv"
+    META_XML_OUTPUT = "meta_feed/facebook_product_feed.xml"
     
     try:
         if not os.path.exists(XML_INPUT):
@@ -159,14 +301,23 @@ if __name__ == "__main__":
             
         logging.info(f"Loaded {len(products)} products from XML feed")
         
-        # Generate Meta Shopping feed
-        success = generate_meta_shopping_feed(products, META_OUTPUT)
+        # Generate Meta Shopping feeds
+        csv_success = generate_meta_csv_feed(products, META_CSV_OUTPUT)
+        xml_success = generate_meta_xml_feed(products, META_XML_OUTPUT)
         
-        if success:
-            print(f"✅ Successfully generated Meta Shopping feed with {len(products)} products")
+        if csv_success and xml_success:
+            print(f"✅ Successfully generated Meta Shopping feeds with {len(products)} products")
+            print(f"   - CSV feed: {META_CSV_OUTPUT}")
+            print(f"   - XML feed: {META_XML_OUTPUT}")
         else:
-            print(f"❌ Failed to generate Meta Shopping feed")
+            if not csv_success:
+                print(f"❌ Failed to generate Meta Shopping CSV feed")
+            if not xml_success:
+                print(f"❌ Failed to generate Meta Shopping XML feed")
             
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
         print(f"❌ Error: {e}")
+
+if __name__ == "__main__":
+    main()
