@@ -13,12 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Calculate SHA256 hash of current feed CSV to detect changes
       - name: Calculate current feed hash
         id: calc_hash
         run: |
           sha256=$(sha256sum google_feed/google_merchant_feed.csv | cut -d' ' -f1)
           echo "current_hash=$sha256" >> $GITHUB_OUTPUT
 
+      # Read last saved feed hash to compare
       - name: Read previous hash
         id: read_prev_hash
         run: |
@@ -29,6 +31,7 @@ jobs:
           fi
           echo "prev_hash=$prev_hash" >> $GITHUB_OUTPUT
 
+      # Compare current and previous hashes, decide if feed changed
       - name: Compare hashes
         id: check_hash
         run: |
@@ -37,6 +40,7 @@ jobs:
           else
             echo "feed_changed=false" >> $GITHUB_OUTPUT
 
+      # Save new hash file if feed changed, commit & push it
       - name: Save new hash
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: |
@@ -47,7 +51,7 @@ jobs:
           git commit -m "Update feed hash [skip ci]"
           git push
 
-      - name: Cache pip
+      - name: Cache pip packages
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
@@ -69,7 +73,7 @@ jobs:
         run: |
           mkdir -p product_urls google_feed meta_feed
 
-      # Run crawl steps only if feed changed
+      # Run crawling and feed generation only if feed CSV changed
       - name: Run crawler script
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python crawler.py
@@ -87,7 +91,7 @@ jobs:
         run: python download_taxonomy.py
         continue-on-error: false
 
-      # These steps run every time (validate/fix/upload)
+      # Validate, fix, and upload always (validation happens on latest feed)
       - name: Validate Google product categories
         run: python download_and_validate_full.py
         continue-on-error: false
@@ -98,12 +102,18 @@ jobs:
         run: python fix_categories.py
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
+          MAPPING_FILE: category_suggestions.csv
+          TAXONOMY_FILE: google_product_taxonomy.txt
 
       - name: Upload fixed feed to Google Sheets
         run: python sheets_publisher.py
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SPREADSHEET_ID: "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
+          WORKSHEET_NAME: "google_merchant_feed"
+          FEED_FILE: "google_feed/google_merchant_feed_fixed.csv"
 
+      # Commit and push any updated files to the repo
       - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
