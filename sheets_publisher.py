@@ -18,17 +18,17 @@ RETRY_DELAY = 5  # seconds
 class GoogleSheetsPublisher:
     def __init__(self, credentials_json_string, spreadsheet_id, worksheet_name=None):
         """
-        Initialize the Google Sheets publisher
-        
+        Initialize the Google Sheets publisher.
+
         Args:
-            credentials_json_string: JSON string of service account credentials
-            spreadsheet_id: The ID from your Google Sheets URL
-            worksheet_name: Name of the worksheet to update (if None, uses first sheet)
+            credentials_json_string: JSON string of service account credentials.
+            spreadsheet_id: The Google Sheets spreadsheet ID.
+            worksheet_name: Worksheet tab name to update; defaults to first sheet if None.
         """
         self.spreadsheet_id = spreadsheet_id
         self.worksheet_name = worksheet_name
-        
-        # Set up credentials
+
+        # Parse credentials and authorize client
         credentials_dict = json.loads(credentials_json_string)
         self.credentials = Credentials.from_service_account_info(
             credentials_dict,
@@ -37,165 +37,155 @@ class GoogleSheetsPublisher:
                 'https://www.googleapis.com/auth/drive'
             ]
         )
-        
-        # Initialize gspread client
         self.gc = gspread.authorize(self.credentials)
-        
+        logger.info("Google Sheets client authorized successfully.")
+
     def clear_and_update_sheet(self, csv_file_path):
         """
-        Clear the existing sheet and upload new CSV data
-        
+        Clear the worksheet and upload CSV data in bulk.
+
         Args:
-            csv_file_path: Path to the CSV file to upload
+            csv_file_path: Path to CSV file containing data.
+        
+        Returns:
+            bool: True on success, False on failure.
         """
         try:
-            logger.info(f"Opening spreadsheet: {self.spreadsheet_id}")
+            logger.info(f"Opening spreadsheet ID: {self.spreadsheet_id}")
             spreadsheet = self.gc.open_by_key(self.spreadsheet_id)
-            
-            # Get the worksheet - use specified tab name
+
+            # Get or create worksheet
             if self.worksheet_name:
                 try:
                     worksheet = spreadsheet.worksheet(self.worksheet_name)
-                    logger.info(f"Found existing worksheet: {self.worksheet_name}")
+                    logger.info(f"Found existing worksheet: '{self.worksheet_name}'")
                 except gspread.WorksheetNotFound:
-                    # If the specified sheet doesn't exist, create it
-                    worksheet = spreadsheet.add_worksheet(
-                        title=self.worksheet_name, 
-                        rows=1000, 
-                        cols=20
-                    )
-                    logger.info(f"Created new worksheet: {self.worksheet_name}")
+                    worksheet = spreadsheet.add_worksheet(title=self.worksheet_name, rows=1000, cols=50)
+                    logger.info(f"Created new worksheet: '{self.worksheet_name}'")
             else:
-                # Fallback to first sheet if no name specified
                 worksheet = spreadsheet.sheet1
-                logger.info(f"Using main worksheet: {worksheet.title}")
-            
-            # Read CSV file
+                logger.info(f"Using first worksheet: '{worksheet.title}'")
+
+            # Read CSV data into DataFrame
             logger.info(f"Reading CSV file: {csv_file_path}")
             df = pd.read_csv(csv_file_path)
-            
-            # Clean the data - replace NaN values with empty strings
-            df = df.fillna('')
-            
-            # Clear existing content
-            logger.info("Clearing existing worksheet content")
+            df.fillna('', inplace=True)  # Replace NaNs with empty strings
+
+            # Clear existing worksheet content
+            logger.info("Clearing existing worksheet content...")
             worksheet.clear()
-            
-            # Convert DataFrame to list of lists for gspread
+
+            # Prepare data: header + rows
             data_to_upload = [df.columns.tolist()] + df.values.tolist()
-            
-            # Upload data in batches to avoid API limits
-            logger.info(f"Uploading {len(data_to_upload)} rows to Google Sheets")
-            
-            # Retry wrapper for update call
-            for attempt in range(MAX_RETRIES):
+            total_rows = len(data_to_upload)
+            total_cols = len(df.columns)
+
+            logger.info(f"Uploading {total_rows} rows and {total_cols} columns to Google Sheets...")
+
+            # Retry wrapper for worksheet update
+            for attempt in range(1, MAX_RETRIES + 1):
                 try:
                     worksheet.update(
-                        range_name=f'A1:{chr(65 + len(df.columns) - 1)}{len(data_to_upload)}',
+                        range_name=f'A1:{chr(64 + total_cols)}{total_rows}',
                         values=data_to_upload,
                         value_input_option='RAW'
                     )
+                    logger.info("Data upload succeeded.")
                     break
                 except APIError as e:
-                    logger.error(f"APIError on attempt {attempt+1}: {e}")
-                    if attempt < MAX_RETRIES - 1:
-                        time.sleep(RETRY_DELAY)
-                    else:
+                    logger.error(f"APIError on attempt {attempt} of data upload: {e}")
+                    if attempt == MAX_RETRIES:
                         raise
-            
-            # Add metadata in a separate area (after the main data)
+                    logger.info(f"Retrying in {RETRY_DELAY} seconds...")
+                    time.sleep(RETRY_DELAY)
+
+            # Prepare metadata info to append below data
             metadata = [
-                ['Last Updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')],
+                ['Last Updated', datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')],
                 ['Total Products', len(df)],
                 ['Generated By', 'Automated Crawler System']
             ]
-            
-            # Add metadata starting from 2 rows after the main data
-            metadata_start_row = len(data_to_upload) + 2
-            
+            metadata_start_row = total_rows + 2  # Leave one blank row
+
             # Retry wrapper for metadata update
-            for attempt in range(MAX_RETRIES):
+            for attempt in range(1, MAX_RETRIES + 1):
                 try:
                     worksheet.update(
-                        range_name=f'A{metadata_start_row}:B{metadata_start_row + 2}',
+                        range_name=f'A{metadata_start_row}:B{metadata_start_row + len(metadata) - 1}',
                         values=metadata,
                         value_input_option='RAW'
                     )
+                    logger.info("Metadata upload succeeded.")
                     break
                 except APIError as e:
-                    logger.error(f"APIError updating metadata on attempt {attempt+1}: {e}")
-                    if attempt < MAX_RETRIES - 1:
-                        time.sleep(RETRY_DELAY)
-                    else:
+                    logger.error(f"APIError on attempt {attempt} of metadata upload: {e}")
+                    if attempt == MAX_RETRIES:
                         raise
-            
-            logger.info(f"✅ Successfully updated Google Sheets with {len(df)} products")
+                    logger.info(f"Retrying in {RETRY_DELAY} seconds...")
+                    time.sleep(RETRY_DELAY)
+
+            logger.info(f"✅ Successfully updated Google Sheets with {len(df)} products.")
             return True
-            
+
         except Exception as e:
-            logger.error(f"❌ Error updating Google Sheets: {str(e)}")
+            logger.error(f"❌ Error updating Google Sheets: {e}")
             return False
-    
+
     def append_to_sheet(self, csv_file_path):
         """
-        Append new data to existing sheet (alternative method)
-        
+        Append rows from CSV to existing worksheet.
+
         Args:
-            csv_file_path: Path to the CSV file to append
+            csv_file_path: Path to CSV file containing data to append.
+        
+        Returns:
+            bool: True on success, False on failure.
         """
         try:
             spreadsheet = self.gc.open_by_key(self.spreadsheet_id)
             worksheet = spreadsheet.worksheet(self.worksheet_name)
-            
-            # Read CSV
+
             df = pd.read_csv(csv_file_path)
-            
-            # Convert to list of lists
             data_to_append = df.values.tolist()
-            
-            # Append data
+
             worksheet.append_rows(data_to_append, value_input_option='RAW')
-            
-            logger.info(f"✅ Successfully appended {len(df)} products to Google Sheets")
+
+            logger.info(f"✅ Successfully appended {len(df)} products to Google Sheets.")
             return True
-            
+
         except Exception as e:
-            logger.error(f"❌ Error appending to Google Sheets: {str(e)}")
+            logger.error(f"❌ Error appending to Google Sheets: {e}")
             return False
 
 def main():
-    """
-    Main function to run the Google Sheets publisher
-    """
     SPREADSHEET_ID = "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
-    CSV_FILE_PATH = "google_feed/google_merchant_feed.csv"
-    WORKSHEET_NAME = "google_merchant_feed"  # Your existing tab name
-    
+    CSV_FILE_PATH = "google_feed/google_merchant_feed_fixed.csv"
+    WORKSHEET_NAME = "google_merchant_feed"
+
     credentials_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
     if not credentials_json:
-        logger.error("❌ GOOGLE_SHEETS_CREDENTIALS environment variable not found")
+        logger.error("❌ GOOGLE_SHEETS_CREDENTIALS environment variable not found.")
         return False
-    
+
     if not os.path.exists(CSV_FILE_PATH):
         logger.error(f"❌ CSV file not found: {CSV_FILE_PATH}")
         return False
-    
+
     publisher = GoogleSheetsPublisher(
         credentials_json_string=credentials_json,
         spreadsheet_id=SPREADSHEET_ID,
         worksheet_name=WORKSHEET_NAME
     )
-    
+
     success = publisher.clear_and_update_sheet(CSV_FILE_PATH)
-    
+
     if success:
         logger.info("🎉 Google Sheets update completed successfully!")
         print(f"📊 Updated spreadsheet: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}")
+        return True
     else:
         logger.error("💥 Google Sheets update failed!")
         return False
-    
-    return True
 
 if __name__ == "__main__":
     main()
