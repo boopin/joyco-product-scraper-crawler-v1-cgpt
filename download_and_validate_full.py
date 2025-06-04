@@ -1,49 +1,53 @@
-import requests
-import pandas as pd
 import os
+import pandas as pd
+import requests
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+FEED_FILE = os.getenv('FEED_FILE', 'google_feed/google_merchant_feed.csv')
 TAXONOMY_URL = 'https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt'
 TAXONOMY_FILE = 'google_product_taxonomy.txt'
-FEED_FILE = 'google_feed/google_merchant_feed.csv'  # Update path if needed
-OUTPUT_FILE = 'category_validation_full_report.csv'
+REPORT_FILE = 'category_validation_full_report.csv'
 
-def download_taxonomy(url, save_path):
-    print("Downloading Google product taxonomy...")
-    response = requests.get(url)
+def download_taxonomy():
+    logger.info("Downloading Google product taxonomy...")
+    response = requests.get(TAXONOMY_URL)
     response.raise_for_status()
-    with open(save_path, 'w', encoding='utf-8') as f:
-        f.write(response.text)
-    print(f"✅ Taxonomy saved to {save_path}")
+    with open(TAXONOMY_FILE, 'wb') as f:
+        f.write(response.content)
+    logger.info(f"✅ Taxonomy saved to {TAXONOMY_FILE}")
 
-def load_taxonomy(tsv_file):
-    df = pd.read_csv(tsv_file, sep='\t', header=None, names=['category_id', 'category_name'])
-    # Strip spaces in taxonomy IDs
-    df['category_id'] = df['category_id'].astype(str).str.strip()
-    return set(df['category_id'])
+def load_taxonomy():
+    df = pd.read_csv(TAXONOMY_FILE, sep='\t', header=None, names=['category_id', 'category_name'])
+    taxonomy_ids = set(df['category_id'].astype(str).str.strip())
+    logger.info(f"✅ Loaded {len(taxonomy_ids)} taxonomy categories")
+    return taxonomy_ids
 
-def validate_categories_with_flag(feed_file, taxonomy_ids):
-    if feed_file.endswith('.csv'):
-        feed_df = pd.read_csv(feed_file, dtype=str)
-    else:
-        feed_df = pd.read_excel(feed_file, dtype=str)
-    
-    # Strip spaces in feed category IDs
+def validate_categories(feed_file, taxonomy_ids):
+    logger.info(f"Validating product categories in feed: {feed_file}")
+    feed_df = pd.read_csv(feed_file, dtype=str)
     feed_df['google_product_category'] = feed_df['google_product_category'].astype(str).str.strip()
+    feed_df['is_valid_category'] = feed_df['google_product_category'].isin(taxonomy_ids)
     
-    feed_df['is_valid_category'] = feed_df['google_product_category'].apply(lambda x: x in taxonomy_ids)
+    total = len(feed_df)
+    invalid_count = (~feed_df['is_valid_category']).sum()
+    logger.info(f"Total products checked: {total}")
+    logger.info(f"Invalid category count: {invalid_count}")
     
+    feed_df.to_csv(REPORT_FILE, index=False)
+    logger.info(f"Full validation report saved as: {REPORT_FILE}")
     return feed_df
 
 def main():
-    download_taxonomy(TAXONOMY_URL, TAXONOMY_FILE)
-    taxonomy_ids = load_taxonomy(TAXONOMY_FILE)
-    validated_df = validate_categories_with_flag(FEED_FILE, taxonomy_ids)
-    
-    validated_df.to_csv(OUTPUT_FILE, index=False)
-    invalid_count = (~validated_df['is_valid_category']).sum()
-    print(f"Total products checked: {len(validated_df)}")
-    print(f"Invalid category count: {invalid_count}")
-    print(f"Full validation report saved as: {OUTPUT_FILE}")
+    try:
+        download_taxonomy()
+        taxonomy_ids = load_taxonomy()
+        validate_categories(FEED_FILE, taxonomy_ids)
+    except Exception as e:
+        logger.error(f"Validation failed: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()
