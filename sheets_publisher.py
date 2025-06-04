@@ -47,12 +47,13 @@ class GoogleSheetsPublisher:
             logger.info(f"Opening spreadsheet: {self.spreadsheet_id}")
             spreadsheet = self.gc.open_by_key(self.spreadsheet_id)
             
-            # Get the worksheet - use first sheet if no name specified
+            # Get the worksheet - use specified tab name
             if self.worksheet_name:
                 try:
                     worksheet = spreadsheet.worksheet(self.worksheet_name)
                     logger.info(f"Found existing worksheet: {self.worksheet_name}")
                 except gspread.WorksheetNotFound:
+                    # If the specified sheet doesn't exist, create it
                     worksheet = spreadsheet.add_worksheet(
                         title=self.worksheet_name, 
                         rows=1000, 
@@ -60,7 +61,7 @@ class GoogleSheetsPublisher:
                     )
                     logger.info(f"Created new worksheet: {self.worksheet_name}")
             else:
-                # Use the first sheet (main sheet)
+                # Fallback to first sheet if no name specified
                 worksheet = spreadsheet.sheet1
                 logger.info(f"Using main worksheet: {worksheet.title}")
             
@@ -144,7 +145,7 @@ def main():
     # Configuration (these should be set as environment variables in GitHub Actions)
     SPREADSHEET_ID = "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
     CSV_FILE_PATH = "google_feed/google_merchant_feed.csv"
-    WORKSHEET_NAME = None  # Use None to write to the main sheet
+    WORKSHEET_NAME = "google_merchant_feed"  # Your existing tab name
     
     # Get credentials from environment variable
     credentials_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
@@ -161,7 +162,7 @@ def main():
     publisher = GoogleSheetsPublisher(
         credentials_json_string=credentials_json,
         spreadsheet_id=SPREADSHEET_ID,
-        worksheet_name=WORKSHEET_NAME  # None = use main sheet
+        worksheet_name=WORKSHEET_NAME  # Will use your existing "google_merchant_feed" tab
     )
     
     # Update the sheet
