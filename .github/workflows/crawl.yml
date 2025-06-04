@@ -38,25 +38,32 @@ jobs:
       - name: Run Meta Shopping feed generator
         run: python meta_feed_generator.py
         
-      - name: Upload to Google Sheets
+      - name: Download Google product taxonomy
+        run: python download_taxonomy.py
+        
+      - name: Validate Google product categories
+        run: python download_and_validate_full.py
+        
+      - name: Fix invalid product categories
+        run: python fix_categories.py
+        
+      - name: Upload fixed feed to Google Sheets
         run: python sheets_publisher.py
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-        continue-on-error: true
         
       - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Add files only if they exist
-          for file in product_urls/product_links.csv product_urls/product_links.xml google_feed/product_feed.csv google_feed/product_feed.xml google_feed/google_merchant_feed.csv meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml; do
+          for file in product_urls/product_links.csv product_urls/product_links.xml google_feed/product_feed.csv google_feed/product_feed.xml google_feed/google_merchant_feed.csv google_feed/google_merchant_feed_fixed.csv category_validation_full_report.csv unmatched_invalid_categories.csv meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml; do
             if [ -f "$file" ]; then
               git add "$file"
             fi
           done
           
-          git commit -m "Update product feed - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          git commit -m "Automated feed update and validation - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
