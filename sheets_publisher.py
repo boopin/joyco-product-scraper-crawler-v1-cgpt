@@ -11,14 +11,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class GoogleSheetsPublisher:
-    def __init__(self, credentials_json_string, spreadsheet_id, worksheet_name="Sheet1"):
+    def __init__(self, credentials_json_string, spreadsheet_id, worksheet_name=None):
         """
         Initialize the Google Sheets publisher
         
         Args:
             credentials_json_string: JSON string of service account credentials
             spreadsheet_id: The ID from your Google Sheets URL
-            worksheet_name: Name of the worksheet to update
+            worksheet_name: Name of the worksheet to update (if None, uses first sheet)
         """
         self.spreadsheet_id = spreadsheet_id
         self.worksheet_name = worksheet_name
@@ -47,17 +47,22 @@ class GoogleSheetsPublisher:
             logger.info(f"Opening spreadsheet: {self.spreadsheet_id}")
             spreadsheet = self.gc.open_by_key(self.spreadsheet_id)
             
-            # Try to get existing worksheet or create new one
-            try:
-                worksheet = spreadsheet.worksheet(self.worksheet_name)
-                logger.info(f"Found existing worksheet: {self.worksheet_name}")
-            except gspread.WorksheetNotFound:
-                worksheet = spreadsheet.add_worksheet(
-                    title=self.worksheet_name, 
-                    rows=1000, 
-                    cols=20
-                )
-                logger.info(f"Created new worksheet: {self.worksheet_name}")
+            # Get the worksheet - use first sheet if no name specified
+            if self.worksheet_name:
+                try:
+                    worksheet = spreadsheet.worksheet(self.worksheet_name)
+                    logger.info(f"Found existing worksheet: {self.worksheet_name}")
+                except gspread.WorksheetNotFound:
+                    worksheet = spreadsheet.add_worksheet(
+                        title=self.worksheet_name, 
+                        rows=1000, 
+                        cols=20
+                    )
+                    logger.info(f"Created new worksheet: {self.worksheet_name}")
+            else:
+                # Use the first sheet (main sheet)
+                worksheet = spreadsheet.sheet1
+                logger.info(f"Using main worksheet: {worksheet.title}")
             
             # Read CSV file
             logger.info(f"Reading CSV file: {csv_file_path}")
@@ -139,7 +144,7 @@ def main():
     # Configuration (these should be set as environment variables in GitHub Actions)
     SPREADSHEET_ID = "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
     CSV_FILE_PATH = "google_feed/google_merchant_feed.csv"
-    WORKSHEET_NAME = "Product Feed"  # You can customize this
+    WORKSHEET_NAME = None  # Use None to write to the main sheet
     
     # Get credentials from environment variable
     credentials_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
@@ -156,7 +161,7 @@ def main():
     publisher = GoogleSheetsPublisher(
         credentials_json_string=credentials_json,
         spreadsheet_id=SPREADSHEET_ID,
-        worksheet_name=WORKSHEET_NAME
+        worksheet_name=WORKSHEET_NAME  # None = use main sheet
     )
     
     # Update the sheet
