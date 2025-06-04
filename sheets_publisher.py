@@ -63,6 +63,9 @@ class GoogleSheetsPublisher:
             logger.info(f"Reading CSV file: {csv_file_path}")
             df = pd.read_csv(csv_file_path)
             
+            # Clean the data - replace NaN values with empty strings
+            df = df.fillna('')
+            
             # Clear existing content
             logger.info("Clearing existing worksheet content")
             worksheet.clear()
