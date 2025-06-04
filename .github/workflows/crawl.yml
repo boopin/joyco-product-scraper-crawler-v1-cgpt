@@ -13,6 +13,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Calculate current feed hash
+        id: calc_hash
+        run: |
+          sha256=$(sha256sum google_feed/google_merchant_feed.csv | cut -d' ' -f1)
+          echo "current_hash=$sha256" >> $GITHUB_OUTPUT
+
+      - name: Read previous hash
+        id: read_prev_hash
+        run: |
+          if [[ -f .github/last_feed_hash.txt ]]; then
+            prev_hash=$(cat .github/last_feed_hash.txt)
+          else
+            prev_hash=""
+          fi
+          echo "prev_hash=$prev_hash" >> $GITHUB_OUTPUT
+
+      - name: Compare hashes
+        id: check_hash
+        run: |
+          if [[ "${{ steps.calc_hash.outputs.current_hash }}" != "${{ steps.read_prev_hash.outputs.prev_hash }}" ]]; then
+            echo "feed_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "feed_changed=false" >> $GITHUB_OUTPUT
+
+      - name: Save new hash
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
+        run: |
+          echo "${{ steps.calc_hash.outputs.current_hash }}" > .github/last_feed_hash.txt
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/last_feed_hash.txt
+          git commit -m "Update feed hash [skip ci]"
+          git push
+
       - name: Cache pip
         uses: actions/cache@v3
         with:
@@ -33,29 +67,37 @@ jobs:
 
       - name: Create necessary directories
         run: |
-          mkdir -p product_urls
-          mkdir -p google_feed
-          mkdir -p meta_feed
+          mkdir -p product_urls google_feed meta_feed
 
+      # Run crawl steps only if feed changed
       - name: Run crawler script
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python crawler.py
 
       - name: Run feed generator
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python product_feed_generator.py
 
       - name: Run Meta Shopping feed generator
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python meta_feed_generator.py
 
       - name: Download Google product taxonomy
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python download_taxonomy.py
         continue-on-error: false
 
+      # These steps run every time (validate/fix/upload)
       - name: Validate Google product categories
         run: python download_and_validate_full.py
         continue-on-error: false
+        env:
+          FEED_FILE: google_feed/google_merchant_feed.csv
 
       - name: Fix invalid product categories
         run: python fix_categories.py
+        env:
+          FEED_FILE: google_feed/google_merchant_feed.csv
 
       - name: Upload fixed feed to Google Sheets
         run: python sheets_publisher.py
