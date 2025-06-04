@@ -8,61 +8,71 @@ on:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
+
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-          
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
+
       - name: Create necessary directories
         run: |
           mkdir -p product_urls
           mkdir -p google_feed
           mkdir -p meta_feed
-          
+
       - name: Run crawler script
         run: python crawler.py
-        
+
       - name: Run feed generator
         run: python product_feed_generator.py
-        
+
       - name: Run Meta Shopping feed generator
         run: python meta_feed_generator.py
-        
+
       - name: Download Google product taxonomy
         run: python download_taxonomy.py
-        
+        continue-on-error: false
+
       - name: Validate Google product categories
         run: python download_and_validate_full.py
-        
+        continue-on-error: false
+
       - name: Fix invalid product categories
         run: python fix_categories.py
-        
+
       - name: Upload fixed feed to Google Sheets
         run: python sheets_publisher.py
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-        
+
       - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           for file in product_urls/product_links.csv product_urls/product_links.xml google_feed/product_feed.csv google_feed/product_feed.xml google_feed/google_merchant_feed.csv google_feed/google_merchant_feed_fixed.csv category_validation_full_report.csv unmatched_invalid_categories.csv meta_feed/facebook_product_feed.csv meta_feed/facebook_product_feed.xml; do
             if [ -f "$file" ]; then
               git add "$file"
             fi
           done
-          
+
           git commit -m "Automated feed update and validation - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
         env:
