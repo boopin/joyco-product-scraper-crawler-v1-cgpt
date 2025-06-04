@@ -4,7 +4,7 @@ import os
 
 TAXONOMY_URL = 'https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt'
 TAXONOMY_FILE = 'google_product_taxonomy.txt'
-FEED_FILE = 'google_feed/google_merchant_feed.csv''  # Update path if needed
+FEED_FILE = 'google_feed/google_merchant_feed.csv'  # Update path if needed
 OUTPUT_FILE = 'category_validation_full_report.csv'
 
 def download_taxonomy(url, save_path):
