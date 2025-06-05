@@ -10,6 +10,7 @@ import random
 import time
 import sys
 import json
+import subprocess
 
 # Configure detailed logging to stdout with timestamp and level
 logging.basicConfig(
@@ -106,7 +107,8 @@ def load_existing_data():
 
 def save_seen_products():
     """
-    Save visited and product URLs to JSON for persisting crawler state.
+    Save visited and product URLs to JSON for persisting crawler state,
+    then log file details to confirm existence and size.
     """
     try:
         with open(SEEN_PRODUCTS_FILE, "w", encoding="utf-8") as f:
@@ -115,6 +117,13 @@ def save_seen_products():
                 "product_urls": list(product_urls)
             }, f, indent=2)
         logger.info(f"Cache SAVED: Crawler state saved to {SEEN_PRODUCTS_FILE}")
+
+        # Log file details after saving
+        ls_output = subprocess.run(['ls', '-la', SEEN_PRODUCTS_FILE], capture_output=True, text=True)
+        logger.info(f"File listing for {SEEN_PRODUCTS_FILE}:\n{ls_output.stdout}")
+        size = os.path.getsize(SEEN_PRODUCTS_FILE)
+        logger.info(f"File size: {size} bytes")
+
     except Exception as e:
         logger.error(f"Failed to save crawler state to {SEEN_PRODUCTS_FILE}: {e}")
 
