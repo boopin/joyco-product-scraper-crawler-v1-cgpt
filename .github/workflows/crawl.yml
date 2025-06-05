@@ -61,6 +61,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      # Cache Google product taxonomy file
+      - name: Cache Google Product Taxonomy
+        id: cache-taxonomy
+        uses: actions/cache@v3
+        with:
+          path: google_product_taxonomy.txt
+          key: google-product-taxonomy-${{ runner.os }}-v1
+          restore-keys: |
+            google-product-taxonomy-${{ runner.os }}-
+
+      # Cache category suggestions mapping file
+      - name: Cache category suggestions CSV
+        id: cache-category-suggestions
+        uses: actions/cache@v3
+        with:
+          path: category_suggestions.csv
+          key: category-suggestions-${{ runner.os }}-v1
+          restore-keys: |
+            category-suggestions-${{ runner.os }}-
+
       # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -91,8 +111,9 @@ jobs:
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python meta_feed_generator.py
 
+      # Download taxonomy only if cache miss
       - name: Download Google product taxonomy
-        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
+        if: steps.cache-taxonomy.outputs.cache-hit != 'true'
         run: python download_taxonomy.py
         continue-on-error: false
 
