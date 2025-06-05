@@ -2,11 +2,11 @@ import os
 import sys
 import pandas as pd
 
-FEED_FILE = 'google_feed/google_merchant_feed.csv'           # Path to your original feed CSV
-MAPPING_FILE = 'category_suggestions.csv'                    # Invalid-to-valid category map CSV
-TAXONOMY_FILE = 'google_product_taxonomy.txt'                # Official taxonomy file from Google
-OUTPUT_FIXED_FEED = 'google_feed/google_merchant_feed_fixed.csv'         # Output fixed feed CSV path
-OUTPUT_UNMATCHED = 'unmatched_invalid_categories.csv'        # Output unmatched invalid categories CSV
+FEED_FILE = os.getenv('FEED_FILE', 'google_feed/google_merchant_feed.csv')           # Original feed CSV
+MAPPING_FILE = os.getenv('MAPPING_FILE', 'category_suggestions.csv')                  # Invalid-to-valid category map CSV
+TAXONOMY_FILE = os.getenv('TAXONOMY_FILE', 'google_product_taxonomy.txt')              # Official taxonomy file from Google
+OUTPUT_FIXED_FEED = os.getenv('OUTPUT_FIXED_FEED', 'google_feed/google_merchant_feed_fixed.csv')  # Output fixed feed CSV
+OUTPUT_UNMATCHED = os.getenv('OUTPUT_UNMATCHED', 'unmatched_invalid_categories.csv')   # Unmatched invalid categories CSV
 
 def check_file_exists(filepath):
     if not os.path.isfile(filepath):
