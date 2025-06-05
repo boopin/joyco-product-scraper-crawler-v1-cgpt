@@ -123,6 +123,10 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
+      # DEBUG: List files before caching seen_products.json
+      - name: List files before caching seen_products.json
+        run: ls -la
+
       # Cache seen_products.json only if it exists
       - name: Cache seen_products.json
         uses: actions/cache@v3
