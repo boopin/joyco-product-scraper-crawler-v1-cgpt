@@ -13,6 +13,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Cache seen_products.json to speed up crawl and maintain state
+      - name: Cache seen products JSON
+        id: cache-seen-products
+        uses: actions/cache@v3
+        with:
+          path: seen_products.json
+          key: seen-products-cache-${{ runner.os }}-v1
+          restore-keys: |
+            seen-products-cache-${{ runner.os }}-
+
       # Calculate SHA256 hash of current feed CSV to detect changes
       - name: Calculate current feed hash
         id: calc_hash
