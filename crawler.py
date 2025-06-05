@@ -98,11 +98,11 @@ def load_existing_data():
                 data = json.load(f)
                 visited_urls.update(set(data.get("visited_urls", [])))
                 product_urls.update(set(data.get("product_urls", [])))
-            logger.info(f"Loaded {len(product_urls)} product URLs and {len(visited_urls)} visited URLs from {SEEN_PRODUCTS_FILE}")
+            logger.info(f"Cache HIT: Loaded {len(product_urls)} product URLs and {len(visited_urls)} visited URLs from {SEEN_PRODUCTS_FILE}")
         except Exception as e:
             logger.error(f"Error loading {SEEN_PRODUCTS_FILE}: {e}")
     else:
-        logger.info(f"No {SEEN_PRODUCTS_FILE} found, will create new.")
+        logger.info(f"Cache MISS: No {SEEN_PRODUCTS_FILE} found, will create new.")
 
 def save_seen_products():
     """
@@ -114,7 +114,7 @@ def save_seen_products():
                 "visited_urls": list(visited_urls),
                 "product_urls": list(product_urls)
             }, f, indent=2)
-        logger.info(f"Saved crawler state to {SEEN_PRODUCTS_FILE}")
+        logger.info(f"Cache SAVED: Crawler state saved to {SEEN_PRODUCTS_FILE}")
     except Exception as e:
         logger.error(f"Failed to save crawler state to {SEEN_PRODUCTS_FILE}: {e}")
 
