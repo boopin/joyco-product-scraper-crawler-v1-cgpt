@@ -9,6 +9,7 @@ import logging
 import random
 import time
 import sys
+import json
 
 # Configure detailed logging to stdout with timestamp and level
 logging.basicConfig(
@@ -18,18 +19,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Base site URL to restrict crawling within the domain
 BASE_URL = "https://joyandco.com"
-
-# Output files for collected product URLs
 OUTPUT_CSV = "product_urls/product_links.csv"
 OUTPUT_XML = "product_urls/product_links.xml"
+SEEN_PRODUCTS_FILE = "seen_products.json"  # Persist crawl state here
 
-# Global sets to track visited URLs and identified product URLs
 visited_urls = set()
 product_urls = set()
 
-# User-Agent list for rotation to avoid bot detection
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -51,7 +48,7 @@ def get_random_user_agent():
 def is_valid_url(url):
     """
     Check if a URL belongs to the same domain as BASE_URL.
-    Avoids crawling external links.
+    Avoid crawling external links.
     """
     parsed = urlparse(url)
     domain = parsed.netloc
@@ -62,12 +59,24 @@ def is_valid_url(url):
 
 def load_existing_data():
     """
-    Load previously visited URLs and product URLs from CSV, if exists,
-    to avoid duplicates in the current crawl.
+    Load previously visited URLs and product URLs from JSON or CSV if available.
     """
     global visited_urls, product_urls
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
 
+    # Try loading from JSON file first
+    if os.path.exists(SEEN_PRODUCTS_FILE):
+        try:
+            with open(SEEN_PRODUCTS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                visited_urls = set(data.get("visited_urls", []))
+                product_urls = set(data.get("product_urls", []))
+            logger.info(f"Loaded {len(product_urls)} product URLs and {len(visited_urls)} visited URLs from {SEEN_PRODUCTS_FILE}")
+            return
+        except Exception as e:
+            logger.error(f"Failed to load {SEEN_PRODUCTS_FILE}: {e}")
+
+    # Fallback to CSV load
     if os.path.exists(OUTPUT_CSV):
         try:
             with open(OUTPUT_CSV, newline='', encoding='utf-8') as file:
@@ -85,6 +94,21 @@ def load_existing_data():
             logger.error(f"Error loading existing products CSV: {e}")
     else:
         logger.info("No existing product URLs file found. Starting fresh crawl.")
+
+def save_seen_products():
+    """
+    Save visited URLs and product URLs to JSON file for persistence.
+    """
+    data = {
+        "visited_urls": list(visited_urls),
+        "product_urls": list(product_urls)
+    }
+    try:
+        with open(SEEN_PRODUCTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        logger.info(f"Saved crawl state to {SEEN_PRODUCTS_FILE} with {len(product_urls)} product URLs.")
+    except Exception as e:
+        logger.error(f"Error saving {SEEN_PRODUCTS_FILE}: {e}")
 
 def process_sitemap():
     """
@@ -281,6 +305,7 @@ def main():
     if product_urls:
         save_to_csv(product_urls)
         save_to_xml(product_urls)
+        save_seen_products()  # Persist state
         logger.info(f"✅ Saved {len(product_urls)} product URLs to {os.path.dirname(OUTPUT_CSV)}/")
     else:
         logger.error("⚠️ No product URLs found. Please check logs for issues.")
