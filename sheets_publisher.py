@@ -157,10 +157,11 @@ class GoogleSheetsPublisher:
             logger.error(f"❌ Error appending to Google Sheets: {e}")
             return False
 
+
 def main():
-    SPREADSHEET_ID = "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
-    CSV_FILE_PATH = "google_feed/google_merchant_feed_fixed.csv"
-    WORKSHEET_NAME = "google_merchant_feed"
+    SPREADSHEET_ID = os.getenv('SPREADSHEET_ID', "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI")
+    CSV_FILE_PATH = os.getenv('FEED_FILE', "google_feed/google_merchant_feed_fixed.csv")
+    WORKSHEET_NAME = os.getenv('WORKSHEET_NAME', "google_merchant_feed")
 
     credentials_json = os.getenv('GOOGLE_SHEETS_CREDENTIALS')
     if not credentials_json:
@@ -186,6 +187,7 @@ def main():
     else:
         logger.error("💥 Google Sheets update failed!")
         return False
+
 
 if __name__ == "__main__":
     main()
