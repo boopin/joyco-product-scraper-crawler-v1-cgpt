@@ -10,126 +10,138 @@ import random
 import time
 import sys
 
-# Set up logging with more detail
+# Configure detailed logging to stdout with timestamp and level
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
+logger = logging.getLogger(__name__)
 
-# Base URL of the site to crawl
+# Base site URL to restrict crawling within the domain
 BASE_URL = "https://joyandco.com"
+
+# Output files for collected product URLs
 OUTPUT_CSV = "product_urls/product_links.csv"
 OUTPUT_XML = "product_urls/product_links.xml"
 
-# Storage for visited and product URLs
+# Global sets to track visited URLs and identified product URLs
 visited_urls = set()
 product_urls = set()
 
-# User-Agent rotation for avoiding bot detection
+# User-Agent list for rotation to avoid bot detection
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0",
-    "Mozilla/5.0 (iPad; CPU OS 15_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/98.0.4758.85 Mobile/15E148 Safari/604.1"
+    "Mozilla/5.0 (iPad; CPU OS 15_2 like Mac OS X) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) CriOS/98.0.4758.85 Mobile/15E148 Safari/604.1"
 ]
 
 def get_random_user_agent():
+    """Return a random User-Agent string from the list."""
     return random.choice(USER_AGENTS)
 
-# Validate if a URL is internal
 def is_valid_url(url):
+    """
+    Check if a URL belongs to the same domain as BASE_URL.
+    Avoids crawling external links.
+    """
     parsed = urlparse(url)
     domain = parsed.netloc
-    
-    # Ensure we're only following URLs from the same domain
     if domain == "" or domain == urlparse(BASE_URL).netloc:
         return True
-    
-    logging.debug(f"Skipping external URL: {url}")
+    logger.debug(f"Skipping external URL: {url}")
     return False
 
-# Check existing URLs and load into memory
 def load_existing_data():
+    """
+    Load previously visited URLs and product URLs from CSV, if exists,
+    to avoid duplicates in the current crawl.
+    """
     global visited_urls, product_urls
-    
-    # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
-    
-    # Try to load existing products from CSV
+
     if os.path.exists(OUTPUT_CSV):
         try:
             with open(OUTPUT_CSV, newline='', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
+                count = 0
                 for row in reader:
                     url = row.get("url")
                     if url:
                         visited_urls.add(url)
                         if "/product/" in url:
                             product_urls.add(url)
-                            
-            logging.info(f"Loaded {len(product_urls)} existing product URLs")
+                        count += 1
+            logger.info(f"Loaded {len(product_urls)} existing product URLs from CSV ({count} total URLs)")
         except Exception as e:
-            logging.error(f"Error loading existing products: {e}")
+            logger.error(f"Error loading existing products CSV: {e}")
     else:
-        logging.info("No existing product file found. Starting fresh crawl.")
+        logger.info("No existing product URLs file found. Starting fresh crawl.")
 
-# Placeholder function for sitemap processing - site doesn't have XML sitemap
 def process_sitemap():
-    logging.info("Site doesn't have XML sitemap - skipping sitemap processing")
+    """
+    Placeholder for sitemap processing if the site had a sitemap.xml.
+    Returns False since joyandco.com does not provide one.
+    """
+    logger.info("Site doesn't have XML sitemap - skipping sitemap processing")
     return False
 
-# Crawl product listings with pagination
 def crawl_product_listings():
-    logging.info("Crawling product listings pages")
-    
-    # Main product listing URLs - expanded to include more starting points
+    """
+    Crawl main product listing pages with pagination support.
+    Extract product links from listings and collect product URLs.
+    """
+    logger.info("Crawling product listing pages with pagination...")
+
     product_pages = [
         "https://joyandco.com/products",
         "https://joyandco.com/flash-deals",
         "https://joyandco.com/new-arrivals",
-        "https://joyandco.com/category/tableware", 
+        "https://joyandco.com/category/tableware",
         "https://joyandco.com/category/home-decor",
         "https://joyandco.com/category/furniture",
         "https://joyandco.com/category/gift-accessories"
     ]
-    
-    # Crawl each starting page and handle pagination
+
     for start_page in product_pages:
         page_url = start_page
         page_num = 1
         has_next_page = True
-        
+
         while has_next_page:
             try:
-                logging.info(f"Processing listing page: {page_url} (Page {page_num})")
+                logger.info(f"Processing listing page: {page_url} (Page {page_num})")
                 headers = {
                     "User-Agent": get_random_user_agent(),
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.5",
                 }
-                
                 response = requests.get(page_url, headers=headers, timeout=15)
+
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
-                    
-                    # Look for product cards with links
+
+                    # Find product links from specific selectors
                     product_links = soup.select(".products a.btn-shopnow, .pro-detail a")
                     if product_links:
-                        for product_link in product_links:
-                            href = product_link.get('href')
+                        for link in product_links:
+                            href = link.get('href')
                             if href and "/product/" in href:
                                 full_url = urljoin(BASE_URL, href)
                                 if full_url not in visited_urls:
-                                    logging.info(f"Found product URL: {full_url}")
+                                    logger.info(f"Found product URL: {full_url}")
                                     visited_urls.add(full_url)
                                     product_urls.add(full_url)
-                    
-                    # Check for pagination and find next page link
+
+                    # Pagination: Check if there is a next page by looking at page numbers or 'next' link
                     has_next_page = False
                     pagination = soup.select(".page-item a")
                     for page_link in pagination:
@@ -139,39 +151,40 @@ def crawl_product_listings():
                             page_num += 1
                             has_next_page = True
                             break
-                            
-                    # Also look for "Next" link
-                    next_links = soup.select(".page-item a[rel='next']")
-                    if next_links and not has_next_page:
-                        next_page_url = urljoin(BASE_URL, next_links[0].get('href'))
-                        page_url = next_page_url
-                        page_num += 1
-                        has_next_page = True
+
+                    if not has_next_page:
+                        next_links = soup.select(".page-item a[rel='next']")
+                        if next_links:
+                            next_page_url = urljoin(BASE_URL, next_links[0].get('href'))
+                            page_url = next_page_url
+                            page_num += 1
+                            has_next_page = True
+
                 else:
-                    logging.warning(f"Failed to access listing page: {page_url}, status: {response.status_code}")
+                    logger.warning(f"Failed to access listing page: {page_url} with status {response.status_code}")
                     has_next_page = False
-                    
+
             except Exception as e:
-                logging.error(f"Error processing listing page {page_url}: {e}")
+                logger.error(f"Error processing listing page {page_url}: {e}")
                 has_next_page = False
-            
-            # Be polite and wait
+
+            # Politeness delay to avoid hammering server
             time.sleep(random.uniform(1, 2))
 
-# Simple crawler without depth restrictions - similar to the original working crawler
 def simple_crawl(url):
+    """
+    Recursive simple crawler for discovering product URLs.
+    Crawls all internal links, adds product URLs to the set.
+    """
     try:
-        # Don't crawl if we've already visited this URL
         if url in visited_urls:
             return
-            
-        # Add a random delay between 1-2 seconds to be polite to the server
-        time.sleep(random.uniform(1, 2))
-        
-        # Log the URL we're crawling
-        logging.info(f"Crawling URL: {url}")
+
+        time.sleep(random.uniform(1, 2))  # Polite crawl delay
+
+        logger.info(f"Crawling URL: {url}")
         visited_urls.add(url)
-        
+
         headers = {
             "User-Agent": get_random_user_agent(),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -179,50 +192,52 @@ def simple_crawl(url):
             "Referer": BASE_URL,
             "DNT": "1"
         }
-        
         response = requests.get(url, headers=headers, timeout=15)
-        
-        # Check for HTTP errors
+
         if response.status_code != 200:
-            logging.warning(f"HTTP error {response.status_code} for URL: {url}")
+            logger.warning(f"HTTP {response.status_code} error for URL: {url}")
             return
-            
+
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Find all links
+
+        # Find all anchor tags with href
         all_links = soup.find_all("a", href=True)
         for link_tag in all_links:
             href = link_tag['href']
-            # Skip anchor links and javascript
+
+            # Skip anchors and javascript
             if href.startswith('#') or href.startswith('javascript:'):
                 continue
-                
-            full_url = urljoin(BASE_URL, href.split("?")[0])
-            if is_valid_url(full_url) and full_url.startswith(BASE_URL) and full_url not in visited_urls:
-                
-                # Process product URLs
-                if "/product/" in full_url:
-                    logging.info(f"Found product URL: {full_url}")
-                    product_urls.add(full_url)
-                
-                # Continue crawling non-product pages
-                simple_crawl(full_url)
-                    
-    except Exception as e:
-        logging.error(f"Error crawling {url}: {e}")
 
-# Save URLs to CSV
+            full_url = urljoin(BASE_URL, href.split("?")[0])
+            if (is_valid_url(full_url) and full_url.startswith(BASE_URL)
+                    and full_url not in visited_urls):
+                if "/product/" in full_url:
+                    logger.info(f"Found product URL: {full_url}")
+                    product_urls.add(full_url)
+
+                # Continue crawling non-product pages recursively
+                simple_crawl(full_url)
+
+    except Exception as e:
+        logger.error(f"Error crawling {url}: {e}")
+
 def save_to_csv(urls, filename=OUTPUT_CSV):
+    """
+    Save discovered product URLs to CSV with timestamps.
+    """
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(["url", "timestamp"])
         for url in sorted(urls):
             writer.writerow([url, datetime.utcnow().isoformat()])
-    logging.info(f"Saved {len(urls)} URLs to CSV: {filename}")
+    logger.info(f"Saved {len(urls)} URLs to CSV: {filename}")
 
-# Save URLs to XML
 def save_to_xml(urls, filename=OUTPUT_XML):
+    """
+    Save discovered product URLs to XML format.
+    """
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     root = ET.Element("products")
     for url in sorted(urls):
@@ -233,25 +248,21 @@ def save_to_xml(urls, filename=OUTPUT_XML):
         timestamp_el.text = datetime.utcnow().isoformat()
     tree = ET.ElementTree(root)
     tree.write(filename, encoding='utf-8', xml_declaration=True)
-    logging.info(f"Saved {len(urls)} URLs to XML: {filename}")
+    logger.info(f"Saved {len(urls)} URLs to XML: {filename}")
 
-# Entry point
 def main():
-    logging.info("Starting crawler")
-    
-    # Load existing data first
+    logger.info("Starting crawler")
+
     load_existing_data()
-    
-    # Try to process sitemap first (fastest method if available)
+
     sitemap_found = process_sitemap()
-    
-    # Crawl product listings with pagination
+
     crawl_product_listings()
-    
-    # If we still don't have enough products, use simple crawler
+
+    # Fallback: if fewer than 100 products, run deep crawl
     if len(product_urls) < 100:
-        logging.info(f"Only found {len(product_urls)} products. Using simple crawler for more thorough search.")
-        starting_urls = [
+        logger.info(f"Only found {len(product_urls)} products. Running simple recursive crawl.")
+        starting_points = [
             BASE_URL,
             "https://joyandco.com/products",
             "https://joyandco.com/flash-deals",
@@ -261,23 +272,18 @@ def main():
             "https://joyandco.com/category/furniture",
             "https://joyandco.com/category/gift-accessories"
         ]
-        
-        # Use the simpler approach that worked in the original crawler
-        for start_url in starting_urls:
+        for start_url in starting_points:
             if start_url not in visited_urls:
                 simple_crawl(start_url)
-    
-    # Log the counts
-    logging.info(f"Found {len(product_urls)} product URLs out of {len(visited_urls)} total URLs visited")
-    
-    # If we found any products, save them
+
+    logger.info(f"Finished crawling. Found {len(product_urls)} products out of {len(visited_urls)} URLs visited.")
+
     if product_urls:
         save_to_csv(product_urls)
         save_to_xml(product_urls)
-        print(f"✅ Saved {len(product_urls)} product URLs to product_urls/")
+        logger.info(f"✅ Saved {len(product_urls)} product URLs to {os.path.dirname(OUTPUT_CSV)}/")
     else:
-        logging.error("NO PRODUCT URLS FOUND! Something is wrong with the crawler.")
-        print("⚠️ No product URLs found. Check logs for more information.")
+        logger.error("⚠️ No product URLs found. Please check logs for issues.")
 
 if __name__ == "__main__":
     main()
