@@ -1,25 +1,27 @@
 import os
 import sys
+import re
 import pandas as pd
 import logging
-from rapidfuzz import process, fuzz  # rapidfuzz is faster alternative to fuzzywuzzy
+from rapidfuzz import process, fuzz
 
-# Setup logging to file and stdout
+FEED_FILE = os.getenv('FEED_FILE', 'google_feed/google_merchant_feed.csv')           # Original feed CSV
+MAPPING_FILE = os.getenv('MAPPING_FILE', 'category_suggestions.csv')                  # Invalid-to-valid category map CSV
+TAXONOMY_FILE = os.getenv('TAXONOMY_FILE', 'google_product_taxonomy.txt')              # Official taxonomy file from Google
+OUTPUT_FIXED_FEED = os.getenv('OUTPUT_FIXED_FEED', 'google_feed/google_merchant_feed_fixed.csv')  # Output fixed feed CSV
+OUTPUT_UNMATCHED = os.getenv('OUTPUT_UNMATCHED', 'unmatched_invalid_categories.csv')   # Unmatched invalid categories CSV
+LOG_FILE = 'fix_categories.log'
+
+# Configure logging to file and console with timestamps
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("fix_categories.log"),
+        logging.FileHandler(LOG_FILE, mode='w', encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
-
-FEED_FILE = os.getenv('FEED_FILE', 'google_feed/google_merchant_feed.csv')
-MAPPING_FILE = os.getenv('MAPPING_FILE', 'category_suggestions.csv')
-TAXONOMY_FILE = os.getenv('TAXONOMY_FILE', 'google_product_taxonomy.txt')
-OUTPUT_FIXED_FEED = os.getenv('OUTPUT_FIXED_FEED', 'google_feed/google_merchant_feed_fixed.csv')
-OUTPUT_UNMATCHED = os.getenv('OUTPUT_UNMATCHED', 'unmatched_invalid_categories.csv')
 
 def check_file_exists(filepath):
     if not os.path.isfile(filepath):
@@ -30,12 +32,9 @@ def load_taxonomy(taxonomy_file):
     check_file_exists(taxonomy_file)
     try:
         df = pd.read_csv(taxonomy_file, sep='\t', header=None, names=['category_id', 'category_name'])
-        df['category_id'] = df['category_id'].astype(str).str.strip()
-        df['category_name'] = df['category_name'].astype(str).str.strip()
-        taxonomy_ids = set(df['category_id'])
-        taxonomy_names = df.set_index('category_id')['category_name'].to_dict()
+        taxonomy_ids = set(df['category_id'].astype(str).str.strip())
         logger.info(f"✅ Loaded {len(taxonomy_ids)} taxonomy categories from {taxonomy_file}")
-        return taxonomy_ids, taxonomy_names
+        return taxonomy_ids
     except Exception as e:
         logger.error(f"❌ Error loading taxonomy file: {e}")
         sys.exit(1)
@@ -56,54 +55,18 @@ def load_mapping(mapping_file):
         logger.error(f"❌ Error loading mapping file: {e}")
         sys.exit(1)
 
-def extract_category_id(cat_string):
+def extract_numeric_category_id(cat_str):
     """
-    Extract numeric category ID from a string like:
-    "6543 - Home & Garden > Kitchen & Dining > Kitchen Appliances > Hot Drink Makers"
-    Returns the numeric string ID or None if parsing fails.
+    Extract numeric category ID from string like '6543 - Some Category Name'
+    Returns the numeric part as string, or None if not found.
     """
-    try:
-        if pd.isna(cat_string):
-            return None
-        first_part = cat_string.split(' ')[0]
-        first_part = first_part.strip('-').strip()
-        if first_part.isdigit():
-            return first_part
-        else:
-            first_part = cat_string.split('-')[0].strip()
-            if first_part.isdigit():
-                return first_part
-        return None
-    except Exception as e:
-        logger.warning(f"Failed to extract category ID from '{cat_string}': {e}")
-        return None
+    if isinstance(cat_str, str):
+        match = re.match(r'^(\d+)', cat_str.strip())
+        if match:
+            return match.group(1)
+    return None
 
-def find_best_fuzzy_match(invalid_cat, taxonomy_names):
-    """
-    Use rapidfuzz to find the best matching taxonomy category name for the invalid category.
-    Returns (best_id, best_name, score) or (None, None, 0) if no good match found.
-    """
-    try:
-        # rapidfuzz process.extractOne returns (match_name, score, key)
-        # We want to match against taxonomy_names.values()
-        best_match = process.extractOne(
-            invalid_cat,
-            taxonomy_names.values(),
-            scorer=fuzz.token_sort_ratio,
-            score_cutoff=60  # Only accept matches with 60+ similarity
-        )
-        if best_match:
-            best_name, score, _ = best_match
-            # Find corresponding category_id by name
-            for cat_id, cat_name in taxonomy_names.items():
-                if cat_name == best_name:
-                    return cat_id, cat_name, score
-        return None, None, 0
-    except Exception as e:
-        logger.warning(f"Fuzzy match failed for '{invalid_cat}': {e}")
-        return None, None, 0
-
-def fix_categories(feed_file, mapping_dict, taxonomy_ids, taxonomy_names):
+def fix_categories(feed_file, mapping_dict, taxonomy_ids):
     check_file_exists(feed_file)
     try:
         feed_df = pd.read_csv(feed_file, dtype=str)
@@ -111,68 +74,96 @@ def fix_categories(feed_file, mapping_dict, taxonomy_ids, taxonomy_names):
             logger.error("❌ Column 'google_product_category' not found in feed file!")
             sys.exit(1)
 
+        # Clean category column
         feed_df['google_product_category'] = feed_df['google_product_category'].astype(str).str.strip()
 
-        # Find unmatched invalid categories (not in taxonomy or mapping)
-        unmatched_invalid_categories = set()
-        for cat in set(feed_df['google_product_category'].unique()):
-            if cat not in taxonomy_ids and cat not in mapping_dict:
-                unmatched_invalid_categories.add(cat)
+        # Map invalid categories to suggested valid categories using existing mapping
+        feed_df['google_product_category_fixed'] = feed_df['google_product_category'].apply(
+            lambda x: mapping_dict.get(x, x)
+        )
+
+        # Identify invalid categories after applying current mapping
+        invalid_after_fix = feed_df[~feed_df['google_product_category_fixed'].isin(taxonomy_ids)]
+
+        unmatched_invalid_categories = set(invalid_after_fix['google_product_category_fixed'].unique())
 
         if unmatched_invalid_categories:
-            logger.info(f"⚠️ Found {len(unmatched_invalid_categories)} unmatched categories without mapping. Attempting fuzzy auto-mapping...")
+            logger.warning(f"⚠️ Found {len(unmatched_invalid_categories)} unmatched categories without mapping. Attempting fuzzy auto-mapping...")
+
+            # Prepare list of valid taxonomy categories as strings
+            valid_categories = list(taxonomy_ids)
+
+            fallback_category_id = "6543"  # Fallback numeric ID only
 
             for invalid_cat in unmatched_invalid_categories:
-                best_id, best_name, score = find_best_fuzzy_match(invalid_cat, taxonomy_names)
-                if best_id:
-                    mapping_dict[invalid_cat] = best_id
-                    logger.info(f"Auto-mapped '{invalid_cat}' to '{best_name}' ({best_id}) with similarity {score}%")
+                # Use rapidfuzz to find best fuzzy match among taxonomy categories by category name only
+                # Extract just category names from taxonomy to improve fuzzy matching
+                # Taxonomy is 'id - name' or just 'id', so split once
+                def get_name(cat):
+                    parts = cat.split(' - ', 1)
+                    return parts[1] if len(parts) > 1 else ''
+
+                # Prepare choices dict id -> name
+                choices = {cat_id: get_name(cat_id) for cat_id in valid_categories}
+
+                # Get best match by fuzzy ratio on category names
+                best_match = None
+                best_score = 0
+
+                for cat_id, name in choices.items():
+                    score = fuzz.ratio(invalid_cat, cat_id)  # fuzzy ratio on full invalid_cat vs id? probably low
+                    score_name = fuzz.ratio(invalid_cat, name)  # fuzzy ratio on invalid_cat vs taxonomy category name
+                    max_score = max(score, score_name)
+                    if max_score > best_score:
+                        best_score = max_score
+                        best_match = cat_id
+
+                # Threshold for accepting a match, e.g. 60%
+                if best_score >= 60:
+                    # Use just the numeric part of best_match
+                    numeric_id = extract_numeric_category_id(best_match)
+                    if numeric_id:
+                        mapping_dict[invalid_cat] = numeric_id
+                        logger.info(f"✅ Auto-mapped invalid category '{invalid_cat}' to '{numeric_id}' with score {best_score}")
+                    else:
+                        mapping_dict[invalid_cat] = fallback_category_id
+                        logger.warning(f"Could not extract numeric ID from best match '{best_match}' for invalid category '{invalid_cat}'. Assigned fallback ID {fallback_category_id}")
                 else:
-                    # Fallback ID if no match found
-                    fallback_category_id = '6543'  # Change as needed
                     mapping_dict[invalid_cat] = fallback_category_id
                     logger.warning(f"No good fuzzy match found for '{invalid_cat}'. Assigned fallback category ID {fallback_category_id}")
 
-        # Map categories with extracted numeric IDs
-        def map_category(cat):
-            if cat in mapping_dict:
-                suggested = mapping_dict[cat]
-                extracted_id = extract_category_id(suggested)
-                if extracted_id and extracted_id in taxonomy_ids:
-                    return extracted_id
-                else:
-                    # Sometimes mapping might be direct ID string already
-                    if suggested in taxonomy_ids:
-                        return suggested
-                    logger.warning(f"Could not extract valid numeric ID for mapping '{suggested}' from invalid category '{cat}'. Using original category.")
-                    return cat
-            else:
-                return cat
+            # Re-apply mapping after auto-mapping additions
+            feed_df['google_product_category_fixed'] = feed_df['google_product_category'].apply(
+                lambda x: mapping_dict.get(x, x)
+            )
 
-        feed_df['google_product_category_fixed'] = feed_df['google_product_category'].apply(map_category)
+            # Recompute invalid after fix
+            invalid_after_fix = feed_df[~feed_df['google_product_category_fixed'].isin(taxonomy_ids)]
+            unmatched_invalid_categories = set(invalid_after_fix['google_product_category_fixed'].unique())
 
-        invalid_after_fix = feed_df[~feed_df['google_product_category_fixed'].isin(taxonomy_ids)]
-
-        unmatched = invalid_after_fix['google_product_category_fixed'].drop_duplicates().reset_index(drop=True)
+        # Prepare unmatched invalid categories report CSV
+        unmatched = pd.Series(list(unmatched_invalid_categories))
         unmatched.to_frame(name='Unmatched Invalid Category').to_csv(OUTPUT_UNMATCHED, index=False)
 
+        # Replace original categories with fixed categories
         feed_df['google_product_category'] = feed_df['google_product_category_fixed']
         feed_df.drop(columns=['google_product_category_fixed'], inplace=True)
 
+        # Save fixed feed CSV
         feed_df.to_csv(OUTPUT_FIXED_FEED, index=False)
 
         logger.info(f"✅ Fixed feed saved to: {OUTPUT_FIXED_FEED}")
         logger.info(f"✅ Unmatched invalid categories saved to: {OUTPUT_UNMATCHED}")
-        logger.info(f"ℹ️ Total unmatched invalid categories after fix: {len(unmatched)}")
+        logger.info(f"ℹ️ Total unmatched invalid categories after fix: {len(unmatched_invalid_categories)}")
 
     except Exception as e:
         logger.error(f"❌ Error processing feed file: {e}")
         sys.exit(1)
 
 def main():
-    taxonomy_ids, taxonomy_names = load_taxonomy(TAXONOMY_FILE)
+    taxonomy_ids = load_taxonomy(TAXONOMY_FILE)
     mapping_dict = load_mapping(MAPPING_FILE)
-    fix_categories(FEED_FILE, mapping_dict, taxonomy_ids, taxonomy_names)
+    fix_categories(FEED_FILE, mapping_dict, taxonomy_ids)
 
 if __name__ == "__main__":
     main()
