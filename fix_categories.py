@@ -1,6 +1,25 @@
 import os
 import sys
 import pandas as pd
+import logging
+
+# Configure logging to both console and file
+LOG_FILE = "fix_categories.log"
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Formatter for logs
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+# Console handler
+ch = logging.StreamHandler(sys.stdout)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+# File handler
+fh = logging.FileHandler(LOG_FILE)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
 
 FEED_FILE = os.getenv('FEED_FILE', 'google_feed/google_merchant_feed.csv')           # Original feed CSV
 MAPPING_FILE = os.getenv('MAPPING_FILE', 'category_suggestions.csv')                  # Invalid-to-valid category map CSV
@@ -10,7 +29,7 @@ OUTPUT_UNMATCHED = os.getenv('OUTPUT_UNMATCHED', 'unmatched_invalid_categories.c
 
 def check_file_exists(filepath):
     if not os.path.isfile(filepath):
-        print(f"❌ File not found: {filepath}")
+        logger.error(f"❌ File not found: {filepath}")
         sys.exit(1)
 
 def load_taxonomy(taxonomy_file):
@@ -18,10 +37,10 @@ def load_taxonomy(taxonomy_file):
     try:
         df = pd.read_csv(taxonomy_file, sep='\t', header=None, names=['category_id', 'category_name'])
         taxonomy_ids = set(df['category_id'].astype(str).str.strip())
-        print(f"✅ Loaded {len(taxonomy_ids)} taxonomy categories from {taxonomy_file}")
+        logger.info(f"✅ Loaded {len(taxonomy_ids)} taxonomy categories from {taxonomy_file}")
         return taxonomy_ids
     except Exception as e:
-        print(f"❌ Error loading taxonomy file: {e}")
+        logger.error(f"❌ Error loading taxonomy file: {e}")
         sys.exit(1)
 
 def load_mapping(mapping_file):
@@ -31,13 +50,13 @@ def load_mapping(mapping_file):
         required_cols = ['Invalid Category ID', 'Suggested Category ID']
         for col in required_cols:
             if col not in df.columns:
-                print(f"❌ Column '{col}' missing in mapping CSV!")
+                logger.error(f"❌ Column '{col}' missing in mapping CSV!")
                 sys.exit(1)
         mapping_dict = dict(zip(df['Invalid Category ID'].str.strip(), df['Suggested Category ID'].str.strip()))
-        print(f"✅ Loaded {len(mapping_dict)} mappings from {mapping_file}")
+        logger.info(f"✅ Loaded {len(mapping_dict)} mappings from {mapping_file}")
         return mapping_dict
     except Exception as e:
-        print(f"❌ Error loading mapping file: {e}")
+        logger.error(f"❌ Error loading mapping file: {e}")
         sys.exit(1)
 
 def fix_categories(feed_file, mapping_dict, taxonomy_ids):
@@ -45,11 +64,31 @@ def fix_categories(feed_file, mapping_dict, taxonomy_ids):
     try:
         feed_df = pd.read_csv(feed_file, dtype=str)
         if 'google_product_category' not in feed_df.columns:
-            print("❌ Column 'google_product_category' not found in feed file!")
+            logger.error("❌ Column 'google_product_category' not found in feed file!")
             sys.exit(1)
 
         # Clean category column
         feed_df['google_product_category'] = feed_df['google_product_category'].astype(str).str.strip()
+
+        # Find unmatched invalid categories before fix
+        unmatched_before_fix = feed_df[~feed_df['google_product_category'].isin(taxonomy_ids)]['google_product_category'].drop_duplicates()
+        logger.info(f"ℹ️ Found {len(unmatched_before_fix)} unmatched invalid categories before fix.")
+
+        # AUTO-MAPPING FOR UNMATCHED CATEGORIES
+        unmatched_to_map = [cat for cat in unmatched_before_fix if cat not in mapping_dict]
+
+        if unmatched_to_map:
+            logger.info(f"⚠️ Found {len(unmatched_to_map)} unmatched categories without mapping. Attempting auto-mapping...")
+            # Use simple heuristic: map to closest taxonomy ID by numeric similarity (nearest neighbor)
+            for invalid_cat in unmatched_to_map:
+                try:
+                    invalid_num = int(invalid_cat)
+                    # Find taxonomy id with minimal absolute difference
+                    closest_tax = min(taxonomy_ids, key=lambda x: abs(int(x) - invalid_num))
+                    mapping_dict[invalid_cat] = closest_tax
+                    logger.info(f"Auto-mapped invalid category {invalid_cat} to {closest_tax}")
+                except Exception as e:
+                    logger.warning(f"Could not auto-map invalid category {invalid_cat}: {e}")
 
         # Map invalid categories to suggested valid categories
         feed_df['google_product_category_fixed'] = feed_df['google_product_category'].apply(
@@ -70,12 +109,12 @@ def fix_categories(feed_file, mapping_dict, taxonomy_ids):
         # Save fixed feed CSV
         feed_df.to_csv(OUTPUT_FIXED_FEED, index=False)
 
-        print(f"✅ Fixed feed saved to: {OUTPUT_FIXED_FEED}")
-        print(f"✅ Unmatched invalid categories saved to: {OUTPUT_UNMATCHED}")
-        print(f"ℹ️ Total unmatched invalid categories: {len(unmatched)}")
+        logger.info(f"✅ Fixed feed saved to: {OUTPUT_FIXED_FEED}")
+        logger.info(f"✅ Unmatched invalid categories saved to: {OUTPUT_UNMATCHED}")
+        logger.info(f"ℹ️ Total unmatched invalid categories after fix: {len(unmatched)}")
 
     except Exception as e:
-        print(f"❌ Error processing feed file: {e}")
+        logger.error(f"❌ Error processing feed file: {e}")
         sys.exit(1)
 
 def main():
