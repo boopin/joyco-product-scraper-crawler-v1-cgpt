@@ -10,7 +10,6 @@ import random
 import time
 import sys
 import json
-import subprocess
 
 # Configure detailed logging to stdout with timestamp and level
 logging.basicConfig(
@@ -107,25 +106,25 @@ def load_existing_data():
 
 def save_seen_products():
     """
-    Save visited and product URLs to JSON for persisting crawler state,
-    then log file details to confirm existence and size.
+    Save visited and product URLs to JSON for persisting crawler state.
+    Includes detailed logging to confirm file creation.
     """
+    logger.info("Attempting to save crawler state to seen_products.json...")
     try:
         with open(SEEN_PRODUCTS_FILE, "w", encoding="utf-8") as f:
             json.dump({
                 "visited_urls": list(visited_urls),
                 "product_urls": list(product_urls)
             }, f, indent=2)
-        logger.info(f"Cache SAVED: Crawler state saved to {SEEN_PRODUCTS_FILE}")
+        logger.info(f"✅ Successfully saved crawler state to {SEEN_PRODUCTS_FILE}")
 
-        # Log file details after saving
-        ls_output = subprocess.run(['ls', '-la', SEEN_PRODUCTS_FILE], capture_output=True, text=True)
-        logger.info(f"File listing for {SEEN_PRODUCTS_FILE}:\n{ls_output.stdout}")
-        size = os.path.getsize(SEEN_PRODUCTS_FILE)
-        logger.info(f"File size: {size} bytes")
-
+        # Verify file existence
+        if os.path.exists(SEEN_PRODUCTS_FILE):
+            logger.info(f"File {SEEN_PRODUCTS_FILE} exists after saving.")
+        else:
+            logger.error(f"File {SEEN_PRODUCTS_FILE} does NOT exist after saving.")
     except Exception as e:
-        logger.error(f"Failed to save crawler state to {SEEN_PRODUCTS_FILE}: {e}")
+        logger.error(f"❌ Failed to save crawler state: {e}")
 
 def process_sitemap():
     """
@@ -292,6 +291,7 @@ def save_to_xml(urls, filename=OUTPUT_XML):
     logger.info(f"Saved {len(urls)} URLs to XML: {filename}")
 
 def main():
+    logger.info(f"Current working directory: {os.getcwd()}")
     logger.info("Starting crawler")
 
     load_existing_data()
@@ -322,6 +322,8 @@ def main():
     if product_urls:
         save_to_csv(product_urls)
         save_to_xml(product_urls)
+
+        # Save the JSON state file
         save_seen_products()
         logger.info(f"✅ Saved {len(product_urls)} product URLs to {os.path.dirname(OUTPUT_CSV)}/")
     else:
