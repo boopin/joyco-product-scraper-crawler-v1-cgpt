@@ -118,9 +118,10 @@ def save_seen_products():
             }, f, indent=2)
         logger.info(f"✅ Successfully saved crawler state to {SEEN_PRODUCTS_FILE}")
 
-        # Verify file existence
+        # Verify file existence and size
         if os.path.exists(SEEN_PRODUCTS_FILE):
-            logger.info(f"File {SEEN_PRODUCTS_FILE} exists after saving.")
+            size = os.path.getsize(SEEN_PRODUCTS_FILE)
+            logger.info(f"File {SEEN_PRODUCTS_FILE} exists after saving, size: {size} bytes")
         else:
             logger.error(f"File {SEEN_PRODUCTS_FILE} does NOT exist after saving.")
     except Exception as e:
