@@ -43,10 +43,40 @@ def load_mappings(filepath):
     mapping = {}
     with open(filepath, encoding='utf-8') as f:
         reader = csv.DictReader(f)
+        # Normalize headers to lowercase keys for flexible access
+        headers = [h.lower() for h in reader.fieldnames]
+        
+        # Detect header type
+        # Possible keys for invalid category id
+        invalid_keys = ['invalid_category_id', 'invalid category id']
+        valid_keys = ['valid_category_id', 'suggested category id']
+        
+        # Find actual keys in CSV header
+        invalid_key = None
+        valid_key = None
+        
+        for key in invalid_keys:
+            if key in headers:
+                invalid_key = key
+                break
+        
+        for key in valid_keys:
+            if key in headers:
+                valid_key = key
+                break
+        
+        if not invalid_key or not valid_key:
+            logger.error(f"CSV mapping file headers missing required columns. Found headers: {reader.fieldnames}")
+            return mapping
+        
         count = 0
         for row in reader:
-            invalid = row.get("invalid_category_id", "").strip()
-            valid_id = row.get("valid_category_id", "").strip()
+            # Access keys in row by the original header (case insensitive)
+            # So map original header to lowercase
+            # We'll map keys dynamically
+            row_lower = {k.lower(): v for k, v in row.items()}
+            invalid = row_lower.get(invalid_key, "").strip()
+            valid_id = row_lower.get(valid_key, "").strip()
             if not invalid or not valid_id:
                 logger.warning(f"Skipping incomplete row: {row}")
                 continue
@@ -55,7 +85,7 @@ def load_mappings(filepath):
                 mapping[invalid] = valid_id_int
                 count += 1
             except ValueError:
-                logger.warning(f"Invalid valid_category_id in mapping CSV: {valid_id}")
+                logger.warning(f"Invalid valid_category_id in mapping CSV: {valid_id} in row: {row}")
     logger.info(f"✅ Loaded {count} category mappings from {filepath}")
     return mapping
 
