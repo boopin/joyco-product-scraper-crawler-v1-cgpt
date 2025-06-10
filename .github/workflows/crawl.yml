@@ -13,14 +13,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Calculate SHA256 hash of current feed CSV to detect changes
       - name: Calculate current feed hash
         id: calc_hash
         run: |
           sha256=$(sha256sum google_feed/google_merchant_feed.csv | cut -d' ' -f1)
           echo "current_hash=$sha256" >> $GITHUB_OUTPUT
 
-      # Read last saved feed hash to compare
       - name: Read previous hash
         id: read_prev_hash
         run: |
@@ -31,7 +29,6 @@ jobs:
           fi
           echo "prev_hash=$prev_hash" >> $GITHUB_OUTPUT
 
-      # Compare current and previous hashes, decide if feed changed
       - name: Compare hashes
         id: check_hash
         run: |
@@ -41,7 +38,6 @@ jobs:
             echo "feed_changed=false" >> $GITHUB_OUTPUT
           fi
 
-      # Save new hash file if feed changed, commit & push it
       - name: Save new hash
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: |
@@ -52,7 +48,6 @@ jobs:
           git commit -m "Update feed hash [skip ci]"
           git push
 
-      # Cache pip packages to speed up installs
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
@@ -61,7 +56,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # Cache Google product taxonomy file
       - name: Cache Google Product Taxonomy
         id: cache-taxonomy
         uses: actions/cache@v3
@@ -71,7 +65,6 @@ jobs:
           restore-keys: |
             google-product-taxonomy-${{ runner.os }}-
 
-      # Cache category suggestions mapping file
       - name: Cache category suggestions CSV
         id: cache-category-suggestions
         uses: actions/cache@v3
@@ -81,7 +74,6 @@ jobs:
           restore-keys: |
             category-suggestions-${{ runner.os }}-
 
-      # Restore cache for seen_products.json (to speed up crawler loading previous data)
       - name: Restore cache for seen_products.json
         id: cache-seen-products
         uses: actions/cache@v3
@@ -91,29 +83,24 @@ jobs:
           restore-keys: |
             seen-products-${{ runner.os }}-
 
-      # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      # Install required dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Create necessary folders if missing
       - name: Create necessary directories
         run: |
           mkdir -p product_urls google_feed meta_feed
 
-      # Run crawling and feed generation only if feed CSV changed
       - name: Run crawler script
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python crawler.py
 
-      # After crawling, check if seen_products.json exists for caching
       - name: Check if seen_products.json exists
         id: check_seen_file
         run: |
@@ -123,11 +110,9 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      # DEBUG: List files before caching seen_products.json
       - name: List files before caching seen_products.json
         run: ls -la
 
-      # Cache seen_products.json only if it exists
       - name: Cache seen_products.json
         uses: actions/cache@v3
         if: steps.check_seen_file.outputs.exists == 'true'
@@ -145,20 +130,17 @@ jobs:
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python meta_feed_generator.py
 
-      # Download taxonomy only if cache miss
       - name: Download Google product taxonomy
         if: steps.cache-taxonomy.outputs.cache-hit != 'true'
         run: python download_taxonomy.py
         continue-on-error: false
 
-      # Validate categories every run (latest feed)
       - name: Validate Google product categories
         run: python download_and_validate_full.py
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
         continue-on-error: false
 
-      # Fix invalid categories every run - IMPROVED fix_categories.py integration
       - name: Fix invalid product categories
         run: python fix_categories.py
         env:
@@ -166,7 +148,6 @@ jobs:
           MAPPING_FILE: category_suggestions.csv
           TAXONOMY_FILE: google_product_taxonomy.txt
 
-      # Upload fixed feed every run
       - name: Upload fixed feed to Google Sheets
         run: python sheets_publisher.py
         env:
@@ -175,7 +156,6 @@ jobs:
           WORKSHEET_NAME: "google_merchant_feed"
           FEED_FILE: "google_feed/google_merchant_feed_fixed.csv"
 
-      # Commit and push updated files if any changes
       - name: Commit and push updated files
         run: |
           git config --local user.email "action@github.com"
