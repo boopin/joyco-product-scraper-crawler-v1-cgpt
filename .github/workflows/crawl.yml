@@ -52,7 +52,7 @@ jobs:
           git commit -m "Update feed hash [skip ci]"
           git push
 
-      # Cache pip packages
+      # Cache pip packages to speed up installs
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
@@ -81,7 +81,7 @@ jobs:
           restore-keys: |
             category-suggestions-${{ runner.os }}-
 
-      # Restore cache for seen_products.json
+      # Restore cache for seen_products.json (to speed up crawler loading previous data)
       - name: Restore cache for seen_products.json
         id: cache-seen-products
         uses: actions/cache@v3
@@ -97,22 +97,23 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Install dependencies
+      # Install required dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Create necessary folders
+      # Create necessary folders if missing
       - name: Create necessary directories
         run: |
           mkdir -p product_urls google_feed meta_feed
 
-      # Run crawling unconditionally (always runs)
+      # Run crawling and feed generation only if feed CSV changed
       - name: Run crawler script
+        if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python crawler.py
 
-      # Check if seen_products.json exists for caching
+      # After crawling, check if seen_products.json exists for caching
       - name: Check if seen_products.json exists
         id: check_seen_file
         run: |
@@ -122,7 +123,7 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      # Debug: List files before caching seen_products.json
+      # DEBUG: List files before caching seen_products.json
       - name: List files before caching seen_products.json
         run: ls -la
 
@@ -136,12 +137,10 @@ jobs:
           restore-keys: |
             seen-products-${{ runner.os }}-
 
-      # Run feed generator only if feed changed
       - name: Run feed generator
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python product_feed_generator.py
 
-      # Run Meta Shopping feed generator only if feed changed
       - name: Run Meta Shopping feed generator
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: python meta_feed_generator.py
@@ -152,14 +151,14 @@ jobs:
         run: python download_taxonomy.py
         continue-on-error: false
 
-      # Validate categories every run
+      # Validate categories every run (latest feed)
       - name: Validate Google product categories
         run: python download_and_validate_full.py
-        continue-on-error: false
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
+        continue-on-error: false
 
-      # Fix invalid categories every run
+      # Fix invalid categories every run - IMPROVED fix_categories.py integration
       - name: Fix invalid product categories
         run: python fix_categories.py
         env:
