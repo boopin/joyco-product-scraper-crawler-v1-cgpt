@@ -1,13 +1,9 @@
-Invalid Category ID,Suggested Category ID,Suggested Category Name,Sample Product Titles,Sample Brands
-999999,6231,Cups & Mugs,"Abracadabra Coffee Cups Set","BITOSSI"
-12345,6208,Tableware,"Abracadabra Destino Dinner Plate","BITOSSI"
-0,166,Home & Garden > Decor,"Bowl 'Lisa' Bubblegum Gloss","HOME STUDYO"
-99998,644,Home & Garden > Decor > Vases,"Flower Girl Candleholder Ochre","KERSTEN"
-999999,6231,Cups & Mugs,Abracadabra Coffee Cups Set,BITOSSI
-12345,6208,Tableware,Abracadabra Destino Dinner Plate,BITOSSI
-0,166,Home & Garden > Decor,Bowl 'Lisa' Bubblegum Gloss,HOME STUDYO
-99998,644,Home & Garden > Decor > Vases,Flower Girl Candleholder Ochre,KERSTEN
-11111,166,Home & Garden > Decor,Example product title,Example brand
-22222,644,Home & Garden > Decor > Vases,Example product title,Example brand
-33333,6231,Kitchen & Dining > Drinkware > Cups & Mugs,Example product title,Example brand
-44444,6208,Kitchen & Dining > Tableware,Example product title,Example brand
+invalid_category_id,valid_category_id
+166,6543
+6208,6543
+6231,6543
+7492,6543
+644,6543
+5394,6543
+6228,6543
+632,6543
