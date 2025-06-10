@@ -45,8 +45,11 @@ def load_mappings(filepath):
         reader = csv.DictReader(f)
         count = 0
         for row in reader:
-            invalid = row.get("invalid_category", "").strip()
+            invalid = row.get("invalid_category_id", "").strip()
             valid_id = row.get("valid_category_id", "").strip()
+            if not invalid or not valid_id:
+                logger.warning(f"Skipping incomplete row: {row}")
+                continue
             try:
                 valid_id_int = int(valid_id)
                 mapping[invalid] = valid_id_int
