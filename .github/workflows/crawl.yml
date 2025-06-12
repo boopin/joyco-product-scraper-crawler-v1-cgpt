@@ -3,9 +3,9 @@ name: Run Crawler on Mon, Wed, Fri (with Weekly Full-Reset)
 on:
   workflow_dispatch:
   schedule:
-    # Incremental crawls: Mon/Wed/Fri at 1 AM Dubai time (21:00 UTC prev. day)
+    # Incremental crawls: Mon/Wed/Fri at 1 AM Dubai (21:00 UTC prev. day)
     - cron: '0 21 * * 1,3,5'
-    # Full-reset crawl: Sunday at 1 AM Dubai time (21:00 UTC Saturday)
+    # Full-reset crawl: Sunday at 1 AM Dubai (21:00 UTC Saturday)
     - cron: '0 21 * * 6'
 
 jobs:
@@ -16,23 +16,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Calculate current feed hash
+      # ──────────── RAW FEED HASH ────────────
+      - name: Calculate raw feed hash
         id: calc_hash
         run: |
           sha256=$(sha256sum google_feed/google_merchant_feed.csv | cut -d' ' -f1)
           echo "current_hash=$sha256" >> $GITHUB_OUTPUT
 
-      - name: Read previous hash
+      - name: Read previous raw hash
         id: read_prev_hash
         run: |
-          if [[ -f .github/last_feed_hash.txt ]]; then
-            prev_hash=$(cat .github/last_feed_hash.txt)
+          if [[ -f .github/last_raw_hash.txt ]]; then
+            prev_hash=$(cat .github/last_raw_hash.txt)
           else
             prev_hash=""
           fi
           echo "prev_hash=$prev_hash" >> $GITHUB_OUTPUT
 
-      - name: Compare hashes
+      - name: Compare raw hashes
         id: check_hash
         run: |
           if [[ "${{ steps.calc_hash.outputs.current_hash }}" != "${{ steps.read_prev_hash.outputs.prev_hash }}" ]]; then
@@ -41,16 +42,17 @@ jobs:
             echo "feed_changed=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Save new hash
+      - name: Save new raw hash
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' }}
         run: |
-          echo "${{ steps.calc_hash.outputs.current_hash }}" > .github/last_feed_hash.txt
+          echo "${{ steps.calc_hash.outputs.current_hash }}" > .github/last_raw_hash.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add .github/last_feed_hash.txt
-          git commit -m "Update feed hash [skip ci]"
+          git add .github/last_raw_hash.txt
+          git commit -m "Update raw feed hash [skip ci]" || echo "No changes to commit"
           git push
 
+      # ──────────── CACHING & SETUP ────────────
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
@@ -97,9 +99,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Create necessary directories
-        run: |
-          mkdir -p product_urls google_feed meta_feed
+        run: mkdir -p product_urls google_feed meta_feed
 
+      # ──────────── MODE & CRAWL ────────────
       - name: Determine Crawl Mode (Dubai time)
         id: mode
         run: |
@@ -110,46 +112,24 @@ jobs:
             echo "MODE=incremental" >> $GITHUB_ENV
           fi
 
-      - name: Run crawler script
+      - name: Run crawler & feed-gen
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' || env.MODE == 'force' }}
         run: |
-          if [ "${{ env.MODE }}" == "force" ]; then
+          if [[ "${{ env.MODE }}" == "force" ]]; then
             echo "▶ Full-reset crawl"
             python crawler.py --force
           else
             echo "▶ Incremental crawl"
             python crawler.py
           fi
+          python product_feed_generator.py
+          python meta_feed_generator.py
 
-      - name: Check if seen_products.json exists
-        id: check_seen_file
-        run: |
-          if [ -f "seen_products.json" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Save seen_products.json
+        if: steps.cache-seen-products.outputs.cache-hit != 'true'
+        run: echo "state updated"
 
-      - name: List files before caching seen_products.json
-        run: ls -la
-
-      - name: Cache seen_products.json
-        uses: actions/cache@v3
-        if: steps.check_seen_file.outputs.exists == 'true'
-        with:
-          path: seen_products.json
-          key: seen-products-${{ runner.os }}-v1
-          restore-keys: |
-            seen-products-${{ runner.os }}-
-
-      - name: Run feed generator
-        if: ${{ steps.check_hash.outputs.feed_changed == 'true' || env.MODE == 'force' }}
-        run: python product_feed_generator.py
-
-      - name: Run Meta Shopping feed generator
-        if: ${{ steps.check_hash.outputs.feed_changed == 'true' || env.MODE == 'force' }}
-        run: python meta_feed_generator.py
-
+      # ──────────── VALIDATION & PREP ────────────
       - name: Download Google product taxonomy
         if: steps.cache-taxonomy.outputs.cache-hit != 'true'
         run: python download_taxonomy.py
@@ -159,48 +139,57 @@ jobs:
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
 
-      # ────────────────────────────────────────────────────────────────
-      # Ensure category_updater.py can find the raw feed CSV where it expects it
       - name: Prepare input for category_updater
-        run: |
-          cp google_feed/google_merchant_feed.csv ./google_merchant_feed.csv
-      # ────────────────────────────────────────────────────────────────
+        run: cp google_feed/google_merchant_feed.csv ./google_merchant_feed.csv
 
+      # ──────────── CATEGORY UPDATER ────────────
       - name: Auto-assign Google categories
         run: python category_updater.py
 
-      - name: Move updated feed into google_feed folder
+      # ──────────── CATEGORIZED FEED HASH ────────────
+      - name: Calculate categorized feed hash
+        id: calc_cat_hash
+        run: |
+          sha256=$(sha256sum google_merchant_feed_updated.csv | cut -d' ' -f1)
+          echo "cat_hash=$sha256" >> $GITHUB_OUTPUT
+
+      - name: Read previous categorized hash
+        id: read_prev_cat_hash
+        run: |
+          if [[ -f .github/last_cat_hash.txt ]]; then
+            prev_cat=$(cat .github/last_cat_hash.txt)
+          else
+            prev_cat=""
+          fi
+          echo "prev_cat_hash=$prev_cat" >> $GITHUB_OUTPUT
+
+      - name: Compare categorized hashes
+        id: check_cat_hash
+        run: |
+          if [[ "${{ steps.calc_cat_hash.outputs.cat_hash }}" != "${{ steps.read_prev_cat_hash.outputs.prev_cat_hash }}" ]]; then
+            echo "cat_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "cat_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ──────────── PUBLISH & COMMIT ON CHANGE ────────────
+      - name: Move & publish updated feed
+        if: steps.check_cat_hash.outputs.cat_changed == 'true'
         run: |
           mkdir -p google_feed
           mv google_merchant_feed_updated.csv google_feed/google_merchant_feed_updated.csv
-
-      - name: Upload fixed feed to Google Sheets
-        run: python sheets_publisher.py
-        env:
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
-          SPREADSHEET_ID: "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
-          WORKSHEET_NAME: "google_merchant_feed"
-          FEED_FILE: "google_feed/google_merchant_feed_updated.csv"
-
-      - name: Commit and push updated files
-        run: |
+          python sheets_publisher.py \
+            --credentials "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" \
+            --spreadsheet-id "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI" \
+            --worksheet-name "google_merchant_feed" \
+            --feed-file "google_feed/google_merchant_feed_updated.csv"
+          echo "${{ steps.calc_cat_hash.outputs.cat_hash }}" > .github/last_cat_hash.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          for file in \
-            product_urls/product_links.csv \
-            product_urls/product_links.xml \
-            google_feed/product_feed.csv \
-            google_feed/product_feed.xml \
-            google_feed/google_merchant_feed.csv \
-            google_feed/google_merchant_feed_updated.csv \
-            category_validation_full_report.csv \
-            unmatched_invalid_categories.csv \
-            meta_feed/facebook_product_feed.csv \
-            meta_feed/facebook_product_feed.xml; do
-            if [ -f "$file" ]; then
-              git add "$file"
-            fi
-          done
-          git commit -m "Automated feed update and validation - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git add .github/last_cat_hash.txt google_feed/google_merchant_feed_updated.csv
+          git commit -m "Publish updated categorized feed [skip ci]" || echo "No changes to commit"
+          git push
+
+      - name: Skip publish if no category changes
+        if: steps.check_cat_hash.outputs.cat_changed == 'false'
+        run: echo "✅ No category changes; skipping publish."
