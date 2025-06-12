@@ -1,3 +1,5 @@
+# .github/workflows/crawl.yml
+
 name: Run Crawler on Mon, Wed, Fri (with Weekly Full-Reset)
 
 on:
@@ -112,7 +114,7 @@ jobs:
             echo "MODE=incremental" >> $GITHUB_ENV
           fi
 
-      - name: Run crawler & feed-gen
+      - name: Run crawler & feed generators
         if: ${{ steps.check_hash.outputs.feed_changed == 'true' || env.MODE == 'force' }}
         run: |
           if [[ "${{ env.MODE }}" == "force" ]]; then
@@ -124,10 +126,6 @@ jobs:
           fi
           python product_feed_generator.py
           python meta_feed_generator.py
-
-      - name: Save seen_products.json
-        if: steps.cache-seen-products.outputs.cache-hit != 'true'
-        run: echo "state updated"
 
       # ──────────── VALIDATION & PREP ────────────
       - name: Download Google product taxonomy
@@ -175,14 +173,15 @@ jobs:
       # ──────────── PUBLISH & COMMIT ON CHANGE ────────────
       - name: Move & publish updated feed
         if: steps.check_cat_hash.outputs.cat_changed == 'true'
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SPREADSHEET_ID: "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
+          WORKSHEET_NAME: "google_merchant_feed"
+          FEED_FILE: "google_feed/google_merchant_feed_updated.csv"
         run: |
           mkdir -p google_feed
           mv google_merchant_feed_updated.csv google_feed/google_merchant_feed_updated.csv
-          python sheets_publisher.py \
-            --credentials "${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}" \
-            --spreadsheet-id "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI" \
-            --worksheet-name "google_merchant_feed" \
-            --feed-file "google_feed/google_merchant_feed_updated.csv"
+          python sheets_publisher.py
           echo "${{ steps.calc_cat_hash.outputs.cat_hash }}" > .github/last_cat_hash.txt
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
