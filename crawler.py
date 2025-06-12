@@ -1,15 +1,17 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import sys
+import json
+import random
+import time
+import logging
 import requests
+from datetime import datetime
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 import csv
 import xml.etree.ElementTree as ET
-from datetime import datetime
-from urllib.parse import urljoin, urlparse
-import os
-import logging
-import random
-import time
-import sys
-import json
 
 # Configure detailed logging to stdout with timestamp and level
 logging.basicConfig(
@@ -28,6 +30,7 @@ OUTPUT_XML = "product_urls/product_links.xml"
 
 # JSON file to persist visited and product URLs
 SEEN_PRODUCTS_FILE = "seen_products.json"
+STATE_LINKS = "product_urls/product_links.csv"
 
 # Global sets to track visited URLs and identified product URLs
 visited_urls = set()
@@ -58,11 +61,19 @@ def is_valid_url(url):
     Avoids crawling external links.
     """
     parsed = urlparse(url)
-    domain = parsed.netloc
-    if domain == "" or domain == urlparse(BASE_URL).netloc:
+    if parsed.netloc == "" or parsed.netloc == urlparse(BASE_URL).netloc:
         return True
     logger.debug(f"Skipping external URL: {url}")
     return False
+
+def purge_state_files():
+    """Delete the old CSV/JSON state files for a full-reset crawl."""
+    for fn in (STATE_LINKS, SEEN_PRODUCTS_FILE):
+        try:
+            os.remove(fn)
+            logger.info(f"[force] removed state file: {fn}")
+        except FileNotFoundError:
+            pass
 
 def load_existing_data():
     """
@@ -117,13 +128,8 @@ def save_seen_products():
                 "product_urls": list(product_urls)
             }, f, indent=2)
         logger.info(f"✅ Successfully saved crawler state to {SEEN_PRODUCTS_FILE}")
-
-        # Verify file existence and size
-        if os.path.exists(SEEN_PRODUCTS_FILE):
-            size = os.path.getsize(SEEN_PRODUCTS_FILE)
-            logger.info(f"File {SEEN_PRODUCTS_FILE} exists after saving, size: {size} bytes")
-        else:
-            logger.error(f"File {SEEN_PRODUCTS_FILE} does NOT exist after saving.")
+        size = os.path.getsize(SEEN_PRODUCTS_FILE)
+        logger.info(f"File {SEEN_PRODUCTS_FILE} exists after saving, size: {size} bytes")
     except Exception as e:
         logger.error(f"❌ Failed to save crawler state: {e}")
 
@@ -166,50 +172,38 @@ def crawl_product_listings():
                     "Accept-Language": "en-US,en;q=0.5",
                 }
                 response = requests.get(page_url, headers=headers, timeout=15)
-
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
-
-                    # Find product links from specific selectors
                     product_links = soup.select(".products a.btn-shopnow, .pro-detail a")
-                    if product_links:
-                        for link in product_links:
-                            href = link.get('href')
-                            if href and "/product/" in href:
-                                full_url = urljoin(BASE_URL, href)
-                                if full_url not in visited_urls:
-                                    logger.info(f"Found product URL: {full_url}")
-                                    visited_urls.add(full_url)
-                                    product_urls.add(full_url)
-
-                    # Pagination: Check if there is a next page by looking at page numbers or 'next' link
+                    for link in product_links:
+                        href = link.get('href')
+                        if href and "/product/" in href:
+                            full_url = urljoin(BASE_URL, href)
+                            if full_url not in visited_urls:
+                                logger.info(f"Found product URL: {full_url}")
+                                visited_urls.add(full_url)
+                                product_urls.add(full_url)
+                    # Pagination detection
                     has_next_page = False
                     pagination = soup.select(".page-item a")
                     for page_link in pagination:
                         if page_link.get_text().strip() == str(page_num + 1):
-                            next_page_url = urljoin(BASE_URL, page_link.get('href'))
-                            page_url = next_page_url
+                            page_url = urljoin(BASE_URL, page_link.get('href'))
                             page_num += 1
                             has_next_page = True
                             break
-
                     if not has_next_page:
                         next_links = soup.select(".page-item a[rel='next']")
                         if next_links:
-                            next_page_url = urljoin(BASE_URL, next_links[0].get('href'))
-                            page_url = next_page_url
+                            page_url = urljoin(BASE_URL, next_links[0].get('href'))
                             page_num += 1
                             has_next_page = True
-
                 else:
                     logger.warning(f"Failed to access listing page: {page_url} with status {response.status_code}")
                     has_next_page = False
-
             except Exception as e:
                 logger.error(f"Error processing listing page {page_url}: {e}")
                 has_next_page = False
-
-            # Politeness delay to avoid hammering server
             time.sleep(random.uniform(1, 2))
 
 def simple_crawl(url):
@@ -220,12 +214,9 @@ def simple_crawl(url):
     try:
         if url in visited_urls:
             return
-
-        time.sleep(random.uniform(1, 2))  # Polite crawl delay
-
+        time.sleep(random.uniform(1, 2))
         logger.info(f"Crawling URL: {url}")
         visited_urls.add(url)
-
         headers = {
             "User-Agent": get_random_user_agent(),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -234,39 +225,26 @@ def simple_crawl(url):
             "DNT": "1"
         }
         response = requests.get(url, headers=headers, timeout=15)
-
         if response.status_code != 200:
             logger.warning(f"HTTP {response.status_code} error for URL: {url}")
             return
-
         soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Find all anchor tags with href
-        all_links = soup.find_all("a", href=True)
-        for link_tag in all_links:
+        for link_tag in soup.find_all("a", href=True):
             href = link_tag['href']
-
-            # Skip anchors and javascript
             if href.startswith('#') or href.startswith('javascript:'):
                 continue
-
             full_url = urljoin(BASE_URL, href.split("?")[0])
-            if (is_valid_url(full_url) and full_url.startswith(BASE_URL)
-                    and full_url not in visited_urls):
+            if is_valid_url(full_url) and full_url.startswith(BASE_URL) and full_url not in visited_urls:
                 if "/product/" in full_url:
                     logger.info(f"Found product URL: {full_url}")
                     product_urls.add(full_url)
-
-                # Continue crawling non-product pages recursively
-                simple_crawl(full_url)
-
+                else:
+                    simple_crawl(full_url)
     except Exception as e:
         logger.error(f"Error crawling {url}: {e}")
 
 def save_to_csv(urls, filename=OUTPUT_CSV):
-    """
-    Save discovered product URLs to CSV with timestamps.
-    """
+    """Save discovered product URLs to CSV with timestamps."""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
@@ -276,32 +254,37 @@ def save_to_csv(urls, filename=OUTPUT_CSV):
     logger.info(f"Saved {len(urls)} URLs to CSV: {filename}")
 
 def save_to_xml(urls, filename=OUTPUT_XML):
-    """
-    Save discovered product URLs to XML format.
-    """
+    """Save discovered product URLs to XML format."""
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     root = ET.Element("products")
     for url in sorted(urls):
         product = ET.SubElement(root, "product")
-        url_el = ET.SubElement(product, "url")
-        url_el.text = url
-        timestamp_el = ET.SubElement(product, "timestamp")
-        timestamp_el.text = datetime.utcnow().isoformat()
+        ET.SubElement(product, "url").text = url
+        ET.SubElement(product, "timestamp").text = datetime.utcnow().isoformat()
     tree = ET.ElementTree(root)
     tree.write(filename, encoding='utf-8', xml_declaration=True)
     logger.info(f"Saved {len(urls)} URLs to XML: {filename}")
 
 def main():
-    logger.info(f"Current working directory: {os.getcwd()}")
-    logger.info("Starting crawler")
+    parser = argparse.ArgumentParser(
+        description="Crawl site for product URLs, incrementally or full-reset."
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Purge previous state files and do a full crawl."
+    )
+    args = parser.parse_args()
 
+    if args.force:
+        purge_state_files()
+
+    logger.info(f"Starting crawler{' [FORCE]' if args.force else ''}")
     load_existing_data()
-
-    sitemap_found = process_sitemap()
-
+    process_sitemap()
     crawl_product_listings()
 
-    # Fallback: if fewer than 100 products, run deep crawl
+    # Fallback deep crawl if too few products found
     if len(product_urls) < 100:
         logger.info(f"Only found {len(product_urls)} products. Running simple recursive crawl.")
         starting_points = [
@@ -323,8 +306,6 @@ def main():
     if product_urls:
         save_to_csv(product_urls)
         save_to_xml(product_urls)
-
-        # Save the JSON state file
         save_seen_products()
         logger.info(f"✅ Saved {len(product_urls)} product URLs to {os.path.dirname(OUTPUT_CSV)}/")
     else:
