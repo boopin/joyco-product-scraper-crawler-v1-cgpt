@@ -153,13 +153,18 @@ jobs:
       - name: Download Google product taxonomy
         if: steps.cache-taxonomy.outputs.cache-hit != 'true'
         run: python download_taxonomy.py
-        continue-on-error: false
 
       - name: Validate Google product categories
         run: python download_and_validate_full.py
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
-        continue-on-error: false
+
+      # ────────────────────────────────────────────────────────────────
+      # Ensure category_updater.py can find the raw feed CSV where it expects it
+      - name: Prepare input for category_updater
+        run: |
+          cp google_feed/google_merchant_feed.csv ./google_merchant_feed.csv
+      # ────────────────────────────────────────────────────────────────
 
       - name: Auto-assign Google categories
         run: python category_updater.py
