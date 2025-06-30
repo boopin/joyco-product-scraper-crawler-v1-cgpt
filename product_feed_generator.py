@@ -27,13 +27,318 @@ CSV_OUTPUT = "google_feed/product_feed.csv"
 XML_OUTPUT = "google_feed/product_feed.xml"
 GOOGLE_MERCHANT_CSV = "google_feed/google_merchant_feed.csv"
 
+# Manual override file - this will preserve your exact assignments
+MANUAL_OVERRIDES_FILE = "manual_category_overrides.json"
+
 # Ensure output directories exist
 os.makedirs("google_feed", exist_ok=True)
 logging.info(f"Ensured google_feed directory exists")
 
 # ═══════════════════════════════════════════════════════════════════════════════════════
-# UPDATED Google Product Category Mapping - Based on Manual Google Sheet Assignments
-# Updated on June 26, 2025 to match your preferred categorization from 242 products
+# COMPLETE MANUAL CATEGORY OVERRIDES - Your Exact Google Sheet Assignments
+# This preserves ALL 242 of your manual changes and takes highest priority
+# Generated from your Google Sheet on June 26, 2025
+# ═══════════════════════════════════════════════════════════════════════════════════════
+
+MANUAL_CATEGORY_OVERRIDES = {
+    # Category 588 - Candles (8 products)
+    "candle-dip-dye-yellow-tJ1CSM": "588",
+    "dip-dye-blue-taper-candle-pack-of-4-G107PE": "588",
+    "dip-dye-coral-taper-candle-j9N4V8": "588",
+    "dip-dye-orange-taper-candle-pack-of-4-yMIpt2": "588",
+    "twist-flicker-candleholder-pink-JT2eWd": "588",
+    "twist-flicker-candleholder-white-sAsYLc": "588",
+    "twist-glow-candleholder-green-bbkcUk": "588",
+    "twist-glow-candleholder-orange-3nhp4A": "588",
+
+    # Category 594 - Storage Jars (1 product)
+    "sweetkeeper-light-yellow-jar-MfSjub": "594",
+
+    # Category 602 - Vases (72 products - YOUR MOST COMMON CATEGORY)
+    "aurora-vase-QtwQO7": "602",
+    "azure-tower-vase-usiPgp": "602",
+    "birdy-vase-1ivN0A": "602",
+    "black-vase-l-bnkl7X": "602",
+    "black-vase-m-J1WakU": "602",
+    "blue-glass-vase-KAAcTq": "602",
+    "blue-vase-4UH9rD": "602",
+    "blush-wave-vase-VgygWF": "602",
+    "bold-stripes-vase-IErdVl": "602",
+    "bubble-bliss-small-blue-vase-TV97xt": "602",
+    "bubble-bliss-small-green-vase-fELe5t": "602",
+    "bubble-bliss-small-pink-vase-vc9h1y": "602",
+    "bubble-bliss-small-red-vase-0n5hEZ": "602",
+    "bubble-bliss-tall-blue-vase-unbqYB": "602",
+    "bubble-bliss-tall-green-vase-nJWUpD": "602",
+    "bubble-bliss-tall-pink-vase-kRaPzX": "602",
+    "bubble-bliss-tall-red-vase-BdGIlV": "602",
+    "bubble-pop-vase-aYXp7U": "602",
+    "butterfly-garden-vase-l-lqNFj1": "602",
+    "butterfly-garden-vase-m-R11BOa": "602",
+    "checkmate-vase-o3SZCR": "602",
+    "cherry-blossom-lidded-jar-EwKIkl": "602",
+    "cherry-blossom-lidded-vase-lKXu7G": "602",
+    "classic-yellow-porcelain-vase-l-Tex3ve": "602",
+    "classic-yellow-porcelain-vase-m-oMwtLG": "602",
+    "confetti-dot-vase-h1doBk": "602",
+    "delft-tulip-vase-FMhv5X": "602",
+    "disks-vase-lLL4HA": "602",
+    "double-the-party-vase-yYkLDf": "602",
+    "evergreen-vase-waLCAv": "602",
+    "finya-vase-medium-xUMUdo": "602",
+    "finya-vase-small-u9P1wN": "602",
+    "firelight-duo-vase-b58wuT": "602",
+    "fresh-orange-can-vase-4R6YOh": "602",
+    "jardin-lidded-vase-F3AkBV": "602",
+    "jug-emily-sky-matte-sjVqjD": "602",
+    "jug-emily-yolk-matte-gIGtmY": "602",
+    "large-chilli-vase-jgfHcr": "602",
+    "leela-large-vase-Yz1pBc": "602",
+    "leela-medium-vase-0Rw06l": "602",
+    "lemon-vase-jWcote": "602",
+    "lemonade-can-vase-set-of-3-t1vV4A": "602",
+    "love-in-bloom-gold-vase-RNElJR": "602",
+    "lumiere-jar-l-xJu2Ea": "602",
+    "lumiere-jar-m-rRxnFq": "602",
+    "mandarino-vase-RRwhKz": "602",
+    "mandarino-vase-oSs5Fd": "602",
+    "misty-lemon-can-vase-UIb0lj": "602",
+    "paint-the-world-with-love-V6VbrO": "602",
+    "papillion-lidded-vase-oSf7xQ": "602",
+    "skyline-vase-9yZABA": "602",
+    "small-chilli-vase-bPvwoR": "602",
+    "strawberry-vase-E6CYHt": "602",
+    "striped-lidded-vase-vV1XPo": "602",
+    "sugarline-vase-9rFoY2": "602",
+    "sugarvault-jar-l-bykFhe": "602",
+    "sugarvault-jar-m-q7f2Tq": "602",
+    "sugarvault-jar-s-NejKK6": "602",
+    "sunbeam-vase-iSeYkN": "602",
+    "sunny-wave-vase-j1TarN": "602",
+    "sunshine-glass-vase-Gqvfu5": "602",
+    "tangerine-twist-vase-m7G1iP": "602",
+    "tissue-box-orange-pWgfkV": "602",
+    "tower-vase-9HSBd7": "602",
+    "tropic-twist-vase-8dCYxo": "602",
+    "tropical-vase-JoQGyk": "602",
+    "vase-oscar-bone-gloss-aA1JJf": "602",
+    "vase-oscar-bubblegum-gloss-NiYPpf": "602",
+    "vase-oscar-sky-matte-0TnEkm": "602",
+    "vivid-vase-Gqxs54": "602",
+    "wild-strawberry-can-vase-y0Fgm1": "602",
+    "zigzag-groove-vase-1IcRW8": "602",
+
+    # Category 674 - Glassware & Drinkware (13 products)
+    "bliss-cocktail-glass-set-of-2-wVoWvZ": "674",
+    "crystal-cake-stand-l-1aXHg5": "674",
+    "crystal-cake-stand-m-znlBxJ": "674",
+    "crystal-cake-stand-s-w5p3bW": "674",
+    "crystal-hobnail-jug-with-gold-handle-U5RN5L": "674",
+    "crystal-tray-FV9aIm": "674",
+    "flute-water-glass-classics-on-acid-ENZuHe": "674",
+    "glow-jar-CIqmuy": "674",
+    "jug-emily-bone-gloss-YqW4Rm": "674",
+    "jug-emily-moss-gloss-x8TBZR": "674",
+    "paradise-cocktail-glass-set-of-2-EMpePq": "674",
+    "whimsy-jar-PPY9tL": "674",
+    "wine-chiller-vYnM0O": "674",
+
+    # Category 721 - Planters (4 products)
+    "boho-planter-o3q5RN": "721",
+    "chrome-kiss-planter-nTDrA9": "721",
+    "disks-planter-GFwX5i": "721",
+    "pink-kiss-planter-wNl1qY": "721",
+
+    # Category 1985 - Linen Napkins (3 products)
+    "bronze-palm-trees-linen-napkins-set-of-4-9uqNPG": "1985",
+    "palm-tree-linen-napkins-set-of-4-Q7LhiL": "1985",
+    "ramadan-nights-linen-napkins-set-of-4-dTIbPj": "1985",
+
+    # Category 2169 - Cappuccino Mug Set (1 product)
+    "cozy-cappuccino-mug-set-ik8yLK": "2169",
+
+    # Category 2547 - Linen Placemats (2 products)
+    "bronze-palm-trees-linen-placemat-set-of-4-uPYQ5E": "2547",
+    "chinoiserie-birds-linen-placemat-set-of-4-BVCL8N": "2547",
+
+    # Category 2784 - Candle Holders (29 products)
+    "candelabra-eric-bone-matte-GgNYWF": "2784",
+    "emma-candle-holder-5q00Ow": "2784",
+    "fancy-candle-holder-OnKt5h": "2784",
+    "fancy-pink-candle-holder-wSTBIb": "2784",
+    "fancy-purple-candle-holder-Xumq0D": "2784",
+    "fancy-purple-candle-holder-ntWr5K": "2784",
+    "fancy-yellow-candle-holder-06TVHr": "2784",
+    "flower-girl-candleholde-pink-Hv3IdF": "2784",
+    "flower-girl-candleholder-lilac-l77Ql5": "2784",
+    "flower-girl-candleholder-ochre-dtKhkX": "2784",
+    "flower-girl-candleholder-yellow-CA8gpn": "2784",
+    "large-venice-candle-holder-9ERK1X": "2784",
+    "leopard-candle-holder-set-of-2-W54Wir": "2784",
+    "medium-venice-candle-holder-nal7NS": "2784",
+    "nala-candle-holder-UsgmDg": "2784",
+    "nora-candle-holder-vqp6ua": "2784",
+    "nora-green-candle-holder-hLo94e": "2784",
+    "nora-purple-candle-holder-kwNBcR": "2784",
+    "parrot-candle-holder-2AqvCv": "2784",
+    "petra-candle-holder-5RJlNo": "2784",
+    "petra-pink-candle-holder-gmftTY": "2784",
+    "petra-purple-candle-holder-4rsvSz": "2784",
+    "philine-candle-holder-hGtibu": "2784",
+    "romy-candle-holder-bFYHHJ": "2784",
+    "roots-black-candle-holder-5uYzA6": "2784",
+    "roots-silver-candle-holder-9tOJ5v": "2784",
+    "samatha-candle-holder-ogP5cL": "2784",
+    "sandy-candle-holder-HJHOe0": "2784",
+    "ylvie-candle-holder-aLS7Cd": "2784",
+
+    # Category 2951 - Hobnail Tumblers (4 products)
+    "aquamarine-hobnail-tumblers-set-of-6-LbUM2N": "2951",
+    "bronze-hobnail-tumblers-set-of-6-gLiGbn": "2951",
+    "crystal-hobnail-tumblers-set-of-6-zEUa32": "2951",
+    "neon-citrine-hobnail-tumblers-set-of-6-3uVHor": "2951",
+
+    # Category 3330 - Jugs & Teapots (6 products)
+    "aquamarine-hobnail-jug-tall-KMO9Fr": "3330",
+    "bronze-hobnail-jug-tall-MItwRN": "3330",
+    "hybrid-teapot-smeraldina-jP5GhE": "3330",
+    "neon-citrine-hobnail-jug-PmY5xi": "3330",
+    "sugar-bowl-KoIAB8": "3330",
+    "teapot-UXKZyi": "3330",
+
+    # Category 3498 - Bowls (7 products)
+    "birdy-bowl-BJBWFJ": "3498",
+    "bowl-lisa-bone-gloss-BSKFl3": "3498",
+    "bowl-lisa-bubblegum-gloss-TyMgca": "3498",
+    "bowl-lisa-coral-gloss-QuUwOW": "3498",
+    "bowl-lisa-sky-gloss-jEzrk6": "3498",
+    "psycho-salad-bowl-classics-on-acid-I0fOr5": "3498",
+    "stella-deep-plate-60wtiW": "3498",
+
+    # Category 3553 - Plates (50 products - YOUR SECOND LARGEST CATEGORY)
+    "abracadabra-destino-dinner-plate-ZwL71a": "3553",
+    "abracadabra-incanto-deep-plate-f6f3Fa": "3553",
+    "abracadabra-round-serving-plate-okCZ5Q": "3553",
+    "abracadabra-striped-dessert-plate-WWoXWn": "3553",
+    "blue-chinoiserie-dinner-plate-classics-on-acid-PVgGP5": "3553",
+    "blue-scalloped-dinner-plate-S6VT1h": "3553",
+    "classic-cake-stand-W6jV8f": "3553",
+    "classic-love-cappucino-mug-8stYME": "3553",
+    "classic-love-dessert-plate-vHavwn": "3553",
+    "con-amore-plate-5ky8Z4": "3553",
+    "crazy-quarter-dark-green-line-fuZS9K": "3553",
+    "crazy-quarter-plate-dark-green-blob-Up8RMG": "3553",
+    "deer-dessert-plate-classics-on-acid-vJvbu7": "3553",
+    "delf-rose-dessert-plate-classics-on-acide-1rmfAV": "3553",
+    "english-delft-dinner-plate-classics-on-acid-f5m2Cz": "3553",
+    "fiorentino-dessert-plate-classics-on-acid-LwzVgz": "3553",
+    "fish-fete-plate-set-wiq5aC": "3553",
+    "flower-bird-soup-plate-classics-on-acid-6Q6xUy": "3553",
+    "flower-girl-set-of-4-ADbOHH": "3553",
+    "forever-always-plate-4gLiFv": "3553",
+    "fruit-feast-plate-PGRiVb": "3553",
+    "glitchy-willow-dessert-plate-classics-on-acid-BaIQCz": "3553",
+    "good-morning-bowl-fWw1mw": "3553",
+    "good-morning-breakfast-plate-apSbJE": "3553",
+    "hollandia-flowers-dinner-plate-classics-on-acid-IKSvjk": "3553",
+    "i-love-you-plate-sUITA2": "3553",
+    "la-tavola-scomposta-cake-stand-ohcRdD": "3553",
+    "lobster-plate-large-vZKc7Q": "3553",
+    "maastricht-ship-dinner-plate-classics-on-acid-WJeUWg": "3553",
+    "matcha-set-giftbox-pink-fRIAo5": "3553",
+    "matcha-set-giftbox-yellow-igGm0V": "3553",
+    "modern-lisa-yk0QO3": "3553",
+    "mug-i-know-qcJ8sD": "3553",
+    "nye-glass-classics-on-acid-UfwDNd": "3553",
+    "pegasus-breakfast-plate-rOnjMj": "3553",
+    "pegasus-striped-cake-platter-gGfYcN": "3553",
+    "pine-scalloped-dinner-plate-EmNJaO": "3553",
+    "pink-scalloped-dinner-plate-fMD6g5": "3553",
+    "powder-striped-cappuccino-mug-S4e6w4": "3553",
+    "powder-striped-jug-suAk5v": "3553",
+    "powder-striped-yogurt-bowl-FSlq6Q": "3553",
+    "shut-up-mug-91SeML": "3553",
+    "small-cups-mixed-shapes-set-of-six-ITei5v": "3553",
+    "soup-plate-pagoda-classics-on-acid-x829dw": "3553",
+    "stella-dessert-plate-n4IsPH": "3553",
+    "stella-dinner-plate-1l2i66": "3553",
+    "stella-round-plate-UP0upm": "3553",
+    "talavera-soup-plate-classics-on-acid-f5iyo7": "3553",
+    "tissue-box-yellow-wzvC7o": "3553",
+    "yellow-scalloped-breakfast-plate-A7zpla": "3553",
+
+    # Category 4009 - Ashtrays (2 products)
+    "jacks-cig-ashtray-large-1w8qhm": "4009",
+    "jacks-cig-ashtray-nPYWV9": "4009",
+
+    # Category 4203 - Table Linens (1 product)
+    "palm-tree-linen-napkins-set-of-4-H8N5uf": "4203",
+
+    # Category 4295 - Photo Frames (5 products)
+    "bisou-photo-frame-I8aWvJ": "4295",
+    "ciao-bella-photo-frame-qBTc0B": "4295",
+    "je-taime-photo-frame-f1XBp0": "4295",
+    "saluti-photo-frame-S3nQjl": "4295",
+    "the-joy-frame-set-GTfjJy": "4295",
+
+    # Category 4453 - Cushions (3 products)
+    "retro-cushion-orange-pKlI82": "4453",
+    "retro-cushion-pink-0s6NHY": "4453",
+    "retro-cushion-yellow-YRVYAZ": "4453",
+
+    # Category 4741 - Home Fragrance (9 products)
+    "cello-suite-n27-cotton-harmony-3000ml-yYYbh0": "4741",
+    "cello-suite-n27-cotton-harmony-700ml-iQ4sd1": "4741",
+    "cello-suite-n29-montecarlo-night-3000ml-ecMhk9": "4741",
+    "cello-suite-n29-montecarlo-night-3000ml-u5FFZ6": "4741",
+    "cello-suite-n29-montecarlo-night-700ml-LJv3uf": "4741",
+    "cello-suite-n7-woods-harmony-3000ml-ACrk7O": "4741",
+    "cello-suite-n7-woods-harmony-700ml-Sj5LDL": "4741",
+    "edion-oud-3000ml-Fa1UyW": "4741",
+    "edion-oud-pqTyyh": "4741",
+
+    # Category 5609 - Side Tables (2 products)
+    "david-bust-black-side-table-lU4Fj5": "5609",
+    "david-bust-white-side-table-VtGaFa": "5609",
+
+    # Category 6049 - Coffee & Tea Cups (7 products)
+    "abracadabra-coffee-cups-set-xUdyr3": "6049",
+    "fancy-tea-cup-set-with-saucer-gW5enB": "6049",
+    "good-morning-mug-Qe5Bej": "6049",
+    "hybrid-tea-cup-isidora-HPVap0": "6049",
+    "hybrid-tea-cup-zora-with-saucer-xxizYV": "6049",
+    "i-love-you-mug-JY2Lvh": "6049",
+    "tea-cups-wplate-set-of-two-fKGiZh": "6049",
+
+    # Category 6325 - Table Runners (1 product)
+    "chinoiserie-birds-linen-runner-Jp2Omz": "6325",
+
+    # Category 6456 - Trinket Trays (2 products)
+    "apple-squared-trinket-tray-eHcdjZ": "6456",
+    "squared-trinket-tray-jYRIfq": "6456",
+
+    # Category 7113 - Lidded Jars (2 products)
+    "classic-lidded-jar-iFyZoK": "7113",
+    "papillion-lidded-jar-hEOqcQ": "7113",
+
+    # Category 230911 - Special Candelabra (1 product)
+    "parrot-candelabra-Kiv1zP": "230911",
+
+    # Category 500044 - Comic Art (3 products)
+    "comic-art-mouse-FICTbs": "500044",
+    "comic-art-teddy-olpPI9": "500044",
+    "relaxing-leo-jL7fXt": "500044",
+
+    # Category 500045 - Decorative Figurines (4 products)
+    "gorilla-gentleman-Hnh5S9": "500045",
+    "love-peace-b9mH5L": "500045",
+    "rock-style-wqoBAi": "500045",
+    "wire-to-the-moon-Xk0Z0H": "500045",
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════════════
+# FALLBACK CATEGORY MAPPING - For new products not in manual overrides
+# Updated to match your preferred categorization patterns from the Google Sheet analysis
 # ═══════════════════════════════════════════════════════════════════════════════════════
 
 CATEGORY_MAPPING = {
@@ -41,233 +346,209 @@ CATEGORY_MAPPING = {
     # TABLEWARE & DINING (Based on your manual assignments)
     # ═══════════════════════════════════════════════════════════════
     
-    # Coffee Cups & Mugs → Category 6049 (Home & Garden > Kitchen & Dining > Tableware > Drinkware > Coffee & Tea Cups)
-    "Tableware": "3553",                # Changed from 6208 to 3553 (Plates category)
-    "Cups": "6049",                     # Changed from 6231 to 6049 (Coffee & Tea Cups)
-    "Mugs": "6049",                     # Changed from 6231 to 6049 (Coffee & Tea Cups)  
-    "Coffee": "6049",                   # Changed from 6231 to 6049 (Coffee & Tea Cups)
-    "Tea": "6049",                      # Changed from 6231 to 6049 (Coffee & Tea Cups)
-    "Coffee Cups": "6049",              # Coffee & Tea Cups
-    "Tea Cups": "6049",                 # Coffee & Tea Cups
-    "Cappuccino": "6049",               # Coffee & Tea Cups
-    "Mug": "6049",                      # Coffee & Tea Cups
+    # Coffee Cups & Mugs → Category 6049
+    "Cups": "6049",
+    "Mugs": "6049",  
+    "Coffee": "6049",
+    "Tea": "6049",
+    "Coffee Cups": "6049",
+    "Tea Cups": "6049",
+    "Cappuccino": "6049",
+    "Mug": "6049",
     
-    # Plates → Category 3553 (Home & Garden > Kitchen & Dining > Tableware > Plates)
-    "Plates": "3553",                   # Changed from 6210 to 3553
-    "Dinner Plate": "3553",             # Plates
-    "Dessert Plate": "3553",            # Plates
-    "Deep Plate": "3553",               # Plates
-    "Serving Plate": "3553",            # Plates
-    "Round Serving Plate": "3553",      # Plates
-    "Plate": "3553",                    # Plates
-    "Dinnerware": "3553",               # Changed from 6208 to 3553
-    "Dinner Set": "3553",               # Changed from 6208 to 3553
+    # Plates → Category 3553
+    "Plates": "3553",
+    "Dinner Plate": "3553",
+    "Dessert Plate": "3553",
+    "Deep Plate": "3553",
+    "Serving Plate": "3553",
+    "Round Serving Plate": "3553",
+    "Plate": "3553",
+    "Dinnerware": "3553",
+    "Dinner Set": "3553",
+    "Tableware": "3553",
     
-    # Bowls → Category 3498 (Home & Garden > Kitchen & Dining > Tableware > Bowls)
-    "Bowls": "3498",                    # Changed from 6209 to 3498
-    "Bowl": "3498",                     # Bowls
+    # Bowls → Category 3498
+    "Bowls": "3498",
+    "Bowl": "3498",
     
     # Glasses & Drinkware → Category 674 or 2951
-    "Glasses": "674",                   # Changed from 6228 to 674 (Glassware & Drinkware)
-    "Glass": "674",                     # Glassware & Drinkware
-    "Cocktail Glass": "674",            # Glassware & Drinkware
-    "Tumblers": "2951",                 # Based on your Hobnail Tumblers assignment
-    "Tumbler": "2951",                  # Tumblers
+    "Glasses": "674",
+    "Glass": "674",
+    "Cocktail Glass": "674",
+    "Tumblers": "2951",
+    "Tumbler": "2951",
+    "Cake Stand": "674",
     
-    # Serving Items → Category 674
-    "Serving Plates": "3553",           # Changed from 734 to 3553 (consistent with plates)
-    "Cake Stand": "674",                # Based on Crystal Cake Stand assignment
-    "Serving": "3553",                  # Plates category
-    
-    # Jugs & Teapots → Category 3330 (Home & Garden > Kitchen & Dining > Tableware > Serveware > Pitchers & Carafes)
-    "Jug": "3330",                      # Based on Hobnail Jug assignment
-    "Teapot": "3330",                   # Teapots
-    "Pitcher": "3330",                  # Pitchers & Carafes
-    "Hobnail": "3330",                  # Based on your Hobnail product assignments
+    # Jugs & Teapots → Category 3330
+    "Jug": "3330",
+    "Teapot": "3330",
+    "Pitcher": "3330",
+    "Hobnail": "3330",
     
     # Other Cutlery
-    "Cutlery": "728",                   # Keep existing
+    "Cutlery": "728",
     
     # ═══════════════════════════════════════════════════════════════
     # HOME DECOR (Based on your manual assignments)
     # ═══════════════════════════════════════════════════════════════
     
-    # Vases → Category 602 (Home & Garden > Decor > Vases) - YOUR MOST COMMON CATEGORY
-    "Vases": "602",                     # Changed from 644 to 602
-    "Vase": "602",                      # Vases
-    "Tower Vase": "602",                # Vases
+    # Vases → Category 602 (YOUR MOST COMMON)
+    "Vases": "602",
+    "Vase": "602",
+    "Tower Vase": "602",
     
-    # Candle Holders → Category 2784 (Home & Garden > Decor > Home Fragrance Accessories > Candle Holders)
-    "Candle Holders": "2784",           # Changed from 3309 to 2784
-    "Candle Holder": "2784",            # Candle Holders
-    "Candlestick": "2784",              # Candle Holders
-    "Candelabra": "2784",               # Candle Holders (based on your assignments)
+    # Candle Holders → Category 2784
+    "Candle Holders": "2784",
+    "Candle Holder": "2784",
+    "Candlestick": "2784",
+    "Candelabra": "2784",
     
-    # Candles → Category 588 (Home & Garden > Decor > Candles & Home Fragrances > Candles)
-    "Candles": "588",                   # Changed from 3655 to 588
-    "Candle": "588",                    # Candles
-    "Taper Candle": "588",              # Candles
-    "Dip Dye": "588",                   # Based on Dip Dye Candle assignment
+    # Candles → Category 588
+    "Candles": "588",
+    "Candle": "588",
+    "Taper Candle": "588",
+    "Dip Dye": "588",
     
-    # Photo Frames → Category 4295 (Home & Garden > Decor > Picture Frames)
-    "Photo Frame": "4295",              # Based on your Photo Frame assignments
-    "Picture Frame": "4295",            # Picture Frames
-    "Frame": "4295",                    # Picture Frames
+    # Photo Frames → Category 4295
+    "Photo Frame": "4295",
+    "Picture Frame": "4295",
+    "Frame": "4295",
     
-    # Cushions → Category 4453 (Home & Garden > Decor > Throw Pillows)
-    "Cushions": "4453",                 # Changed from 635 to 4453
-    "Cushion": "4453",                  # Throw Pillows
-    "Decorative Cushions": "4453",      # Throw Pillows
+    # Cushions → Category 4453
+    "Cushions": "4453",
+    "Cushion": "4453",
+    "Decorative Cushions": "4453",
     
-    # Wall Art → Category 500044 (Artwork - based on Comic Art assignment)
-    "Wall Art": "500044",               # Changed from 639 to 500044
-    "Artwork": "500044",                # Artwork
-    "Comic Art": "500044",              # Based on your Comic Art assignment
-    "Art": "500044",                    # Artwork
+    # Wall Art → Category 500044
+    "Wall Art": "500044",
+    "Artwork": "500044",
+    "Comic Art": "500044",
+    "Art": "500044",
     
-    # Decorative Items → Category 500045 (Figurines - based on Gorilla Gentleman assignment)
-    "Decorative Accents": "500045",     # Changed from 632 to 500045
-    "Figurines": "500045",              # Figurines
-    "Decorative": "500045",             # Figurines
-    "Sculpture": "500045",              # Figurines
-    "Gentleman": "500045",              # Based on Gorilla Gentleman
-    "Gorilla": "500045",                # Based on Gorilla Gentleman
+    # Decorative Items → Category 500045
+    "Decorative Accents": "500045",
+    "Figurines": "500045",
+    "Decorative": "500045",
+    "Sculpture": "500045",
+    "Gentleman": "500045",
+    "Gorilla": "500045",
     
-    # Planters → Category 721 (Home & Garden > Lawn & Garden > Gardening > Planters & Pots)
-    "Planter": "721",                   # Based on your Planter assignments
-    "Planters": "721",                  # Planters & Pots
+    # Planters → Category 721
+    "Planter": "721",
+    "Planters": "721",
     
-    # Storage & Organization → Category 7113 (Jars) or 6456 (Trays)
-    "Jar": "7113",                      # Based on Lidded Jar assignment (changed from 594)
-    "Lidded Jar": "7113",               # Storage Jars
-    "Trinket Tray": "6456",             # Based on your Trinket Tray assignment
-    "Tray": "6456",                     # Trays
-    "Decorative Trays": "6456",         # Changed from 7097 to 6456
+    # Storage & Organization
+    "Jar": "7113",
+    "Lidded Jar": "7113",
+    "Trinket Tray": "6456",
+    "Tray": "6456",
+    "Decorative Trays": "6456",
+    "Ashtray": "4009",
     
-    # Ashtrays → Category 4009 (Home & Garden > Decor > Ashtrays)
-    "Ashtray": "4009",                  # Based on your Ashtray assignment
+    # Table Linens
+    "Napkins": "1985",
+    "Linen Napkins": "1985",
+    "Placemats": "2547",
+    "Placemat": "2547",
+    "Linen Placemat": "2547",
+    "Runner": "6325",
+    "Linen Runner": "6325",
+    "Table Linens": "1985",
+    "Table Cloths": "7493",
     
-    # ═══════════════════════════════════════════════════════════════
-    # TABLE LINENS (Based on your manual assignments)
-    # ═══════════════════════════════════════════════════════════════
+    # Furniture
+    "Side Tables": "5609",
+    "Side Table": "5609",
+    "Table": "5609",
+    "Coffee Tables": "6320",
+    "Console Tables": "6321",
     
-    # Table Linens → Various categories based on your assignments
-    "Table Linens": "1985",             # Changed from 7458 to 1985 (Napkins)
-    "Napkins": "1985",                  # Based on your Napkins assignment (changed from 7492)
-    "Linen Napkins": "1985",            # Napkins
-    "Placemats": "2547",                # Based on your Placemat assignment (changed from 7491)
-    "Placemat": "2547",                 # Placemats
-    "Linen Placemat": "2547",           # Placemats
-    "Table Runners": "6325",            # Based on your Runner assignment (changed from 7494)
-    "Runner": "6325",                   # Table Runners
-    "Linen Runner": "6325",             # Table Runners
-    "Table Cloths": "7493",             # Keep existing
-    
-    # ═══════════════════════════════════════════════════════════════
-    # FURNITURE (Based on your manual assignments)
-    # ═══════════════════════════════════════════════════════════════
-    
-    # Tables → Category 5609 (Side Tables - based on David Bust assignment)
-    "Side Tables": "5609",              # Changed from 6357 to 5609
-    "Side Table": "5609",               # Side Tables
-    "Coffee Tables": "6320",            # Keep existing
-    "Console Tables": "6321",           # Keep existing
-    "Table": "5609",                    # Default to Side Tables
-    
-    # ═══════════════════════════════════════════════════════════════
-    # HOME FRAGRANCE (Based on your manual assignments)
-    # ═══════════════════════════════════════════════════════════════
-    
-    # Home Fragrance → Category 4741 (based on Cello suite assignment)
-    "Home Fragrance": "4741",           # Changed from 3654 to 4741
-    "Diffusers": "4741",                # Changed from 5098 to 4741
-    "Room Sprays": "5099",              # Keep existing
-    "Fragrance": "4741",                # Home Fragrance
-    "Cello": "4741",                    # Based on Cello suite assignment
-    "Suite": "4741",                    # Based on Cello suite assignment
+    # Home Fragrance
+    "Home Fragrance": "4741",
+    "Diffusers": "4741",
+    "Fragrance": "4741",
+    "Cello": "4741",
+    "Suite": "4741",
+    "Room Sprays": "5099",
     
     # ═══════════════════════════════════════════════════════════════
     # SEASONAL & HOLIDAY DECOR
     # ═══════════════════════════════════════════════════════════════
     
-    "Holiday": "3617",                  # Keep existing
-    "Christmas": "5506",                # Keep existing
-    "Ramadan": "3617",                  # Keep existing
-    "Eid": "3617",                      # Keep existing
-    "Special Occasion": "3617",         # Keep existing
+    "Holiday": "3617",
+    "Christmas": "5506",
+    "Ramadan": "3617",
+    "Eid": "3617",
+    "Special Occasion": "3617",
     
     # ═══════════════════════════════════════════════════════════════
     # KITCHEN & COOKING
     # ═══════════════════════════════════════════════════════════════
     
-    "Cookware": "672",                  # Keep existing
-    "Bakeware": "673",                  # Keep existing
+    "Cookware": "672",
+    "Bakeware": "673",
     
     # ═══════════════════════════════════════════════════════════════
     # GIFT ITEMS
     # ═══════════════════════════════════════════════════════════════
     
-    "Gift": "5394",                     # Keep existing
-    "Gift Box": "5424",                 # Keep existing
+    "Gift": "5394",
+    "Gift Box": "5424",
     
     # ═══════════════════════════════════════════════════════════════
     # BRAND-SPECIFIC MAPPINGS (Based on your data analysis)
     # ═══════════════════════════════════════════════════════════════
     
-    # Brands mapped to their most common category in your Google Sheet data
-    "BITOSSI": "3553",                  # Most BITOSSI products are plates (changed from 6208)
-    "KERSTEN": "602",                   # Most KERSTEN products are vases (changed from 644)
-    "KLIMCHI": "674",                   # Most KLIMCHI products are glassware (changed from 6228)
-    "WERNS": "602",                     # Most WERNS products are vases (changed from 644)
-    "ANNA + NINA": "6049",              # Most ANNA+NINA products are cups (changed from 6208)
-    "EDION": "4741",                    # EDION products are home fragrance (changed from 632)
-    "HOME STUDYO": "2784",              # HOME STUDYO products are candle holders
-    "JOY&CO PICKS": "500045",           # JOY&CO PICKS are mostly decorative items
-    "VAL POTTERY": "6049",              # VAL POTTERY are cups/mugs
-    "SELETTI": "3330",                  # SELETTI products are serveware (changed from 632)
-    "Joy & Co": "602",                  # Default to vases (changed from 166)
+    "BITOSSI": "3553",
+    "KERSTEN": "602",
+    "KLIMCHI": "674",
+    "WERNS": "602",
+    "ANNA + NINA": "6049",
+    "EDION": "4741",
+    "HOME STUDYO": "2784",
+    "JOY&CO PICKS": "500045",
+    "VAL POTTERY": "6049",
+    "SELETTI": "3330",
+    "Joy & Co": "602",
     
     # ═══════════════════════════════════════════════════════════════
     # OTHER CATEGORIES
     # ═══════════════════════════════════════════════════════════════
     
-    "Accessories": "500045",            # Changed from 166 to 500045 (Figurines)
-    "Home": "602",                      # Changed from 166 to 602 (Vases - most common)
+    "Accessories": "500045",
+    "Home": "602",
     
     # ═══════════════════════════════════════════════════════════════
     # SPECIFIC PRODUCT KEYWORDS (Based on your product titles)
     # ═══════════════════════════════════════════════════════════════
     
-    # Specific keywords found in your product titles (MOST SPECIFIC FIRST)
-    "David Bust Black Side Table": "5609",     # Exact match for David Bust Side Table
-    "David Bust White Side Table": "5609",     # Exact match for David Bust Side Table
-    "David Bust Side Table": "5609",           # David Bust Side Table
-    "David Bust": "5609",                      # David Bust Side Table
-    "Abracadabra": "3553",                     # BITOSSI Abracadabra products are mostly plates
-    "Destino": "3553",                         # Destino plates
-    "Incanto": "3553",                         # Incanto plates
-    "Aurora": "602",                           # Aurora Vase
-    "Azure": "602",                            # Azure Tower Vase
-    "Birdy": "602",                            # Birdy Vase (also Birdy Bowl exists - but vase is more common)
-    "Emma": "2784",                            # Emma Candle Holder
-    "Fancy": "6049",                           # Fancy Tea Cup Set
-    "Good Morning": "6049",                    # Good Morning Mug
-    "Bisou": "4295",                           # Bisou Photo Frame
-    "Ciao Bella": "4295",                     # Ciao Bella Photo Frame
-    "Je t'aime": "4295",                       # Je t'aime Photo Frame
-    "Retro": "4453",                           # Retro Cushions
-    "Chrome Kiss": "721",                      # Chrome Kiss Planter
-    "Papillion": "7113",                       # Papillion Lidded Jar
-    "Classic": "7113",                         # Classic Lidded Jar
-    "Sweetkeeper": "594",                      # Sweetkeeper Jar (keep original)
-    "Cozy": "2169",                            # Cozy Cappuccino Mug Set (keep original)
-    "Chinoiserie": "6325",                     # Chinoiserie Birds Runner
-    "Palm Tree": "1985",                       # Palm Tree Linen Napkins
-    "Bronze Palm": "1985",                     # Bronze Palm Trees products
+    "Abracadabra": "3553",
+    "David Bust Black Side Table": "5609",
+    "David Bust White Side Table": "5609",
+    "David Bust": "5609",
+    "Aurora": "602",
+    "Azure": "602",
+    "Birdy": "602",
+    "Emma": "2784",
+    "Fancy": "6049",
+    "Good Morning": "6049",
+    "Bisou": "4295",
+    "Ciao Bella": "4295",
+    "Je t'aime": "4295",
+    "Retro": "4453",
+    "Chrome Kiss": "721",
+    "Papillion": "7113",
+    "Classic": "7113",
+    "Sweetkeeper": "594",
+    "Cozy": "2169",
+    "Chinoiserie": "6325",
+    "Palm Tree": "1985",
+    "Bronze Palm": "1985",
 }
 
-# Default Google category - changed to most common category in your data
-DEFAULT_GOOGLE_CATEGORY = "602"        # Home & Garden > Decor > Vases (most common in your data)
+# Default Google category
+DEFAULT_GOOGLE_CATEGORY = "602"
 
 # User-Agent rotation for avoiding bot detection
 USER_AGENTS = [
@@ -282,70 +563,103 @@ USER_AGENTS = [
 def get_random_user_agent():
     return random.choice(USER_AGENTS)
 
-def map_to_google_category(category_name, title, brand):
+def load_manual_overrides():
     """
-    Map Joy&Co category to Google's product taxonomy
-    Using a multi-level approach checking category, title keywords, and brand
-    UPDATED: Now uses your manual Google Sheet assignments as priority
-    FIXED: More specific matching to prevent wrong assignments
+    Load manual category overrides from JSON file if it exists
+    This allows you to add more overrides without changing code
     """
-    # First try to match EXACT product titles (most specific)
-    title_lower = title.lower()
-    for keyword, google_id in CATEGORY_MAPPING.items():
-        if len(keyword.split()) > 2:  # Multi-word specific matches first
-            if keyword.lower() == title_lower:
-                logging.info(f"EXACT title match: '{title}' -> {google_id}")
-                return google_id
+    overrides = MANUAL_CATEGORY_OVERRIDES.copy()
     
-    # Then try specific product name patterns
+    if os.path.exists(MANUAL_OVERRIDES_FILE):
+        try:
+            with open(MANUAL_OVERRIDES_FILE, 'r', encoding='utf-8') as f:
+                file_overrides = json.load(f)
+                overrides.update(file_overrides)
+                logging.info(f"Loaded {len(file_overrides)} additional manual overrides from {MANUAL_OVERRIDES_FILE}")
+        except Exception as e:
+            logging.error(f"Error loading manual overrides file: {e}")
+    
+    logging.info(f"Total manual overrides loaded: {len(overrides)}")
+    return overrides
+
+def save_manual_overrides_template():
+    """
+    Create a template file for additional manual overrides
+    """
+    if not os.path.exists(MANUAL_OVERRIDES_FILE):
+        template = {
+            "_comment": "Add product-specific category overrides here",
+            "_format": "product-id-from-url: category_id",
+            "_example": "some-product-name-abc123: 602",
+            "_note": "These will be added to the existing 242 manual overrides"
+        }
+        
+        try:
+            with open(MANUAL_OVERRIDES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(template, f, indent=2)
+            logging.info(f"Created manual overrides template: {MANUAL_OVERRIDES_FILE}")
+        except Exception as e:
+            logging.error(f"Error creating manual overrides template: {e}")
+
+def map_to_google_category(product_id, category_name, title, brand, manual_overrides):
+    """
+    Map to Google category with manual overrides taking highest priority
+    """
+    # HIGHEST PRIORITY: Check manual overrides first
+    if product_id in manual_overrides:
+        category_id = manual_overrides[product_id]
+        logging.info(f"🎯 MANUAL OVERRIDE: '{product_id}' -> {category_id}")
+        return category_id
+    
+    # SECOND PRIORITY: Specific product name patterns
+    title_lower = title.lower()
     specific_patterns = [
         "David Bust Black Side Table",
         "David Bust White Side Table", 
-        "David Bust Side Table",
         "Abracadabra Coffee Cups Set",
-        "Fancy Tea Cup Set with Saucer"
+        "Fancy Tea Cup Set with Saucer",
+        "Good Morning Mug",
+        "Cozy Cappuccino Mug Set"
     ]
     
     for pattern in specific_patterns:
         if pattern.lower() in title_lower:
             if pattern in CATEGORY_MAPPING:
-                logging.info(f"Specific pattern match: '{pattern}' in '{title}' -> {CATEGORY_MAPPING[pattern]}")
+                logging.info(f"📝 Specific pattern match: '{pattern}' -> {CATEGORY_MAPPING[pattern]}")
                 return CATEGORY_MAPPING[pattern]
     
-    # Next try to match the exact category
+    # THIRD PRIORITY: Category name matching
     if category_name in CATEGORY_MAPPING:
-        logging.info(f"Category match: '{category_name}' -> {CATEGORY_MAPPING[category_name]}")
+        logging.info(f"📂 Category match: '{category_name}' -> {CATEGORY_MAPPING[category_name]}")
         return CATEGORY_MAPPING[category_name]
         
-    # Next, look for keywords in the category
+    # FOURTH PRIORITY: Category keyword matching
     for keyword, google_id in CATEGORY_MAPPING.items():
-        if keyword.lower() in category_name.lower():
-            logging.info(f"Category keyword match: '{keyword}' in '{category_name}' -> {google_id}")
+        if len(keyword) > 2 and keyword.lower() in category_name.lower():
+            logging.info(f"🔍 Category keyword match: '{keyword}' in '{category_name}' -> {google_id}")
             return google_id
     
-    # If category doesn't match, try to find keywords in the title (but be more careful)
+    # FIFTH PRIORITY: Title keyword matching (filtered)
     for keyword, google_id in CATEGORY_MAPPING.items():
-        if len(keyword) > 3 and keyword.lower() in title_lower:  # Avoid short words
-            # Skip generic words that might cause conflicts
-            generic_words = ['table', 'black', 'white', 'side', 'bust', 'set']
+        if len(keyword) > 3 and keyword.lower() in title_lower:
+            generic_words = ['table', 'black', 'white', 'side', 'set', 'large', 'small', 'medium']
             if keyword.lower() not in generic_words:
-                logging.info(f"Title keyword match: '{keyword}' in '{title}' -> {google_id}")
+                logging.info(f"📄 Title keyword match: '{keyword}' in '{title}' -> {google_id}")
                 return google_id
             
-    # If still not found, check if we can map by brand
+    # SIXTH PRIORITY: Brand matching
     if brand in CATEGORY_MAPPING:
-        logging.info(f"Brand match: '{brand}' -> {CATEGORY_MAPPING[brand]}")
+        logging.info(f"🏷️ Brand match: '{brand}' -> {CATEGORY_MAPPING[brand]}")
         return CATEGORY_MAPPING[brand]
     
-    # Default fallback
-    logging.info(f"Using default category for: '{title}' ({brand}) -> {DEFAULT_GOOGLE_CATEGORY}")
+    # DEFAULT FALLBACK
+    logging.info(f"⚡ Default category for: '{title}' ({brand}) -> {DEFAULT_GOOGLE_CATEGORY}")
     return DEFAULT_GOOGLE_CATEGORY
 
-def extract_product_data(url):
+def extract_product_data(url, manual_overrides):
     try:
         logging.info(f"Extracting data from: {url}")
         
-        # Add a random delay between 1-2 seconds to be polite to the server
         time.sleep(random.uniform(1, 2))
         
         headers = {
@@ -358,7 +672,6 @@ def extract_product_data(url):
         
         response = requests.get(url, headers=headers, timeout=15)
         
-        # Check for HTTP errors
         if response.status_code == 404:
             logging.error(f"Product not found (404): {url}")
             return None
@@ -374,63 +687,57 @@ def extract_product_data(url):
         # Extract product ID from URL
         product_id = url.split("/")[-1]
         
-        # Get title from the product detail h2
+        # Get title
         title_tag = soup.select_one(".col-md-6 h2")
         title = title_tag.get_text(strip=True) if title_tag else "No Title"
         logging.info(f"Title extracted: {title}")
         
-        # Get full description from class="text-body" div in #description
+        # Get description
         description_div = soup.select_one("#description .text-body")
         description = description_div.get_text(strip=True) if description_div else "No Description"
         logging.info(f"Description extracted: {len(description)} characters")
         
-        # Fix the image_link extraction - use the actual product image instead of meta tag
+        # Get image
         primary_image_element = soup.select_one(".cz-preview-item.active img.cz-image-zoom")
         if primary_image_element and 'src' in primary_image_element.attrs:
             image_link = primary_image_element['src']
         else:
-            # Fallback to the first image if active not found
             image_element = soup.select_one(".cz-preview-item img.cz-image-zoom")
             image_link = image_element['src'] if image_element and 'src' in image_element.attrs else ""
         
         logging.info(f"Primary image extracted: {image_link}")
         
-        # Get editor notes and brand info for richer description
+        # Get editor notes and brand info
         editor_notes_div = soup.select_one("#editor_notes .text-body")
         brand_info_div = soup.select_one("#about_the_brand .text-body")
         
         editor_notes = editor_notes_div.get_text(strip=True) if editor_notes_div else ""
         brand_info = brand_info_div.get_text(strip=True) if brand_info_div else ""
         
-        # Create rich structured description
+        # Create rich description
         rich_description = description
         if editor_notes:
             rich_description += f"\n\nEDITOR'S NOTE:\n{editor_notes}"
         if brand_info:
             rich_description += f"\n\nABOUT THE BRAND:\n{brand_info}"
         
-        # Get all product images
+        # Get all images
         image_elements = soup.select(".cz-preview-item img.cz-image-zoom")
         all_images = []
         for img in image_elements:
-            if 'src' in img.attrs:
-                if img['src'] not in all_images:  # Avoid duplicates
-                    all_images.append(img['src'])
+            if 'src' in img.attrs and img['src'] not in all_images:
+                all_images.append(img['src'])
         
-        # Remove primary image from additional_images to avoid duplication
         additional_images = [img for img in all_images if img != image_link]
         
-        # Get price from the .price div
+        # Get price
         price_div = soup.select_one(".price")
         price = "0.00"
         if price_div:
             price_text = price_div.get_text(strip=True)
-            # Extract numeric price
             price_match = re.search(r'(\d+(?:\.\d+)?)', price_text)
             if price_match:
                 price = price_match.group(1)
-                
-                # Ensure price has 2 decimal places for Google Merchant format
                 if '.' not in price:
                     price = f"{price}.00"
                 elif len(price.split('.')[1]) == 1:
@@ -438,62 +745,55 @@ def extract_product_data(url):
                     
         logging.info(f"Price extracted: {price}")
         
-        # Get brand from the p.pic-info
+        # Get brand
         brand_tag = soup.select_one("p.pic-info")
         brand = brand_tag.get_text(strip=True) if brand_tag else "Joy & Co"
         logging.info(f"Brand extracted: {brand}")
         
-        # Extract category breadcrumbs
+        # Get category
         breadcrumbs = []
         breadcrumb_elements = soup.select(".breadcrumbs a")
-        for crumb in breadcrumb_elements[1:-1]:  # Skip home and product
+        for crumb in breadcrumb_elements[1:-1]:
             breadcrumbs.append(crumb.get_text(strip=True))
         
         category = " > ".join(breadcrumbs) if breadcrumbs else "Uncategorized"
         
-        # Map to Google product category using updated mapping
-        google_product_category = map_to_google_category(category, title, brand)
+        # Map to Google category
+        google_product_category = map_to_google_category(product_id, category, title, brand, manual_overrides)
         logging.info(f"Final Google category assignment: {google_product_category} for '{title}'")
         
-        # Check if product is in stock
+        # Stock status
         stock_status = "in stock"
         out_of_stock_element = soup.select_one(".out-of-stock-label")
         if out_of_stock_element:
             stock_status = "out of stock"
         
-        # Look for "Last X left" text to determine low inventory
-        last_items_text = ""
+        # Low inventory check
         price_span = price_div.select_one("span.d-block") if price_div else None
         if price_span:
             last_items_text = price_span.get_text(strip=True)
             if "last" in last_items_text.lower() and "left" in last_items_text.lower():
-                # Extract the number
                 num_match = re.search(r'(\d+)', last_items_text)
                 if num_match and int(num_match.group(1)) <= 3:
-                    # Add a note about limited availability
                     stock_status = "limited availability"
             
-        # Extract variants if available (for future use)
+        # Variants
         variants = []
         variant_elements = soup.select(".quantity-cart select option")
         if variant_elements:
-            for variant_el in variant_elements[1:]:  # Skip the first option if it's a placeholder
+            for variant_el in variant_elements[1:]:
                 variant_name = variant_el.get_text(strip=True)
                 variant_value = variant_el.get('value', '')
                 if variant_name and variant_value:
                     variants.append({"name": variant_name, "value": variant_value})
 
-        # Look for product code as MPN (Manufacturer Part Number)
-        mpn = ""
+        # MPN
+        mpn = product_id
         code_info = soup.select_one(".code-info")
         if code_info:
             code_match = re.search(r'Product code - (\w+)', code_info.get_text(strip=True))
             if code_match:
                 mpn = code_match.group(1)
-        
-        # If no MPN found, use the product ID
-        if not mpn:
-            mpn = product_id
 
         product_data = {
             "id": product_id,
@@ -511,14 +811,13 @@ def extract_product_data(url):
             "category": category,
             "google_product_category": google_product_category,
             "mpn": mpn,
-            "gtin": "",  # Not available from the website
+            "gtin": "",
             "variants": json.dumps(variants) if variants else ""
         }
         
-        # Log the extracted data
-        logging.info(f"Successfully extracted data for product: {product_data['id']}")
-        
+        logging.info(f"✅ Successfully extracted data for product: {product_data['id']}")
         return product_data
+        
     except Exception as e:
         logging.error(f"Failed to extract data from {url}: {e}")
         return None
@@ -527,12 +826,9 @@ def generate_csv(products):
     try:
         logging.info(f"Generating CSV at {CSV_OUTPUT} with {len(products)} products")
         
-        # Define core fields for CSV export (excluding rich fields and arrays)
-        # Added additional_image_link to the standard CSV feed
         csv_fields = ["id", "title", "description", "link", "image_link", "additional_image_link",
                       "availability", "price", "brand", "condition", "category"]
         
-        # Convert all values to strings for CSV compatibility
         string_products = []
         for product in products:
             string_product = {}
@@ -551,7 +847,6 @@ def generate_csv(products):
             for product in string_products:
                 writer.writerow(product)
         
-        # Verify file was created
         if os.path.exists(CSV_OUTPUT):
             file_size = os.path.getsize(CSV_OUTPUT)
             logging.info(f"CSV file successfully created at {CSV_OUTPUT}, size: {file_size} bytes")
@@ -568,14 +863,12 @@ def generate_google_merchant_feed(products):
     try:
         logging.info(f"Generating Google Merchant feed at {GOOGLE_MERCHANT_CSV} with {len(products)} products")
         
-        # Define required Google Merchant fields
         google_fields = [
             "id", "title", "description", "link", "image_link", "additional_image_link",
             "availability", "price", "brand", "condition", "google_product_category", 
             "mpn", "gtin"
         ]
         
-        # Convert all values to strings for CSV compatibility
         google_products = []
         for product in products:
             google_product = {}
@@ -594,7 +887,6 @@ def generate_google_merchant_feed(products):
             for product in google_products:
                 writer.writerow(product)
         
-        # Verify file was created
         if os.path.exists(GOOGLE_MERCHANT_CSV):
             file_size = os.path.getsize(GOOGLE_MERCHANT_CSV)
             logging.info(f"Google Merchant feed successfully created at {GOOGLE_MERCHANT_CSV}, size: {file_size} bytes")
@@ -615,24 +907,19 @@ def generate_xml(products):
         for p in products:
             product = ET.SubElement(root, "product")
             
-            # Add simple string elements
             for k, v in p.items():
-                # Skip complex elements that need special handling
                 if k in ["additional_images", "variants"]:
                     continue
                     
                 el = ET.SubElement(product, k)
-                # Explicitly convert value to string if not None
                 el.text = str(v) if v is not None else ""
             
-            # Handle additional images as child elements
             if p.get("additional_images"):
                 images_el = ET.SubElement(product, "additional_images")
                 for img_url in p["additional_images"]:
                     img_el = ET.SubElement(images_el, "image")
                     img_el.text = img_url
             
-            # Handle variants if present
             if p.get("variants") and p["variants"]:
                 try:
                     variants_data = json.loads(p["variants"])
@@ -649,7 +936,6 @@ def generate_xml(products):
         tree = ET.ElementTree(root)
         tree.write(XML_OUTPUT, encoding='utf-8', xml_declaration=True)
         
-        # Verify file was created
         if os.path.exists(XML_OUTPUT):
             file_size = os.path.getsize(XML_OUTPUT)
             logging.info(f"XML file successfully created at {XML_OUTPUT}, size: {file_size} bytes")
@@ -663,14 +949,23 @@ def generate_xml(products):
         return False
 
 def main():
-    logging.info("Starting product feed generator with UPDATED category mappings")
-    logging.info("=" * 80)
-    logging.info("🔄 Using manual Google Sheet category assignments from June 26, 2025")
-    logging.info("📊 Based on analysis of 242 products with preferred categorization")
-    logging.info("=" * 80)
+    logging.info("🚀 Starting COMPLETE Enhanced Product Feed Generator with Manual Override System")
+    logging.info("=" * 100)
+    logging.info("🛡️ PROTECTION SYSTEM: ALL 242 of your manual Google Sheet assignments are preserved!")
+    logging.info("🎯 PRIORITY ORDER:")
+    logging.info("   1. Manual product-specific overrides (HIGHEST) - Your exact Google Sheet assignments")
+    logging.info("   2. Specific product name patterns")  
+    logging.info("   3. Category name matching")
+    logging.info("   4. Category keyword matching")
+    logging.info("   5. Title keyword matching (filtered)")
+    logging.info("   6. Brand matching")
+    logging.info("   7. Default fallback (Category 602 - Vases)")
+    logging.info("=" * 100)
     
     try:
-        # Verify input file exists
+        manual_overrides = load_manual_overrides()
+        save_manual_overrides_template()
+        
         if not os.path.exists(INPUT_CSV):
             logging.error(f"Input file does not exist: {INPUT_CSV}")
             return
@@ -680,35 +975,42 @@ def main():
             reader = csv.DictReader(file)
             urls = [row["url"] for row in reader]
         
-        logging.info(f"Read {len(urls)} URLs from {INPUT_CSV}")
+        logging.info(f"📄 Read {len(urls)} URLs from {INPUT_CSV}")
+        logging.info(f"🛡️ Using {len(manual_overrides)} manual category overrides")
+        logging.info(f"📊 Manual overrides cover 26 different categories from your Google Sheet")
 
         products = []
         for url in urls:
-            data = extract_product_data(url)
+            data = extract_product_data(url, manual_overrides)
             if data:
                 products.append(data)
 
-        logging.info(f"Processed {len(products)} products out of {len(urls)} URLs")
+        logging.info(f"✅ Processed {len(products)} products out of {len(urls)} URLs")
 
         if products:
-            # Create a test product to debug CSV generation
+            override_count = sum(1 for p in products if p['id'] in manual_overrides)
+            pattern_count = len(products) - override_count
+            
+            logging.info(f"🎯 Manual overrides used: {override_count}/{len(products)} products")
+            logging.info(f"📝 Pattern matching used: {pattern_count}/{len(products)} products")
+            
             test_product = products[0]
             logging.info(f"Debug - First product: {test_product['title']} -> Category: {test_product['google_product_category']}")
             
-            # Create the standard feeds
             xml_success = generate_xml(products)
             csv_success = generate_csv(products)
-            
-            # Create the Google Merchant feed
             google_success = generate_google_merchant_feed(products)
             
             if csv_success and xml_success and google_success:
                 print(f"✅ Successfully generated feeds for {len(products)} products.")
+                print(f"🎯 Manual overrides preserved: {override_count} products")
+                print(f"📝 Pattern matching applied: {pattern_count} products")
                 print(f"📁 Files created:")
                 print(f"   - {CSV_OUTPUT}")
                 print(f"   - {XML_OUTPUT}") 
                 print(f"   - {GOOGLE_MERCHANT_CSV}")
-                print(f"🎯 Using UPDATED category mappings based on your manual assignments")
+                print(f"🛡️ Your manual category assignments are 100% PROTECTED!")
+                print(f"🔄 Future crawls will maintain your preferred categorization")
             else:
                 if not csv_success:
                     print(f"⚠️ Failed to generate standard CSV feed.")
