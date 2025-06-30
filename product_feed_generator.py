@@ -238,29 +238,32 @@ CATEGORY_MAPPING = {
     # SPECIFIC PRODUCT KEYWORDS (Based on your product titles)
     # ═══════════════════════════════════════════════════════════════
     
-    # Specific keywords found in your product titles
-    "Abracadabra": "3553",              # BITOSSI Abracadabra products are mostly plates
-    "Destino": "3553",                  # Destino plates
-    "Incanto": "3553",                  # Incanto plates
-    "Aurora": "602",                    # Aurora Vase
-    "Azure": "602",                     # Azure Tower Vase
-    "Birdy": "602",                     # Birdy Vase (also Birdy Bowl exists)
-    "Emma": "2784",                     # Emma Candle Holder
-    "Fancy": "6049",                    # Fancy Tea Cup Set
-    "Good Morning": "6049",             # Good Morning Mug
-    "Bisou": "4295",                    # Bisou Photo Frame
-    "Ciao Bella": "4295",               # Ciao Bella Photo Frame
-    "Je t'aime": "4295",                # Je t'aime Photo Frame
-    "Retro": "4453",                    # Retro Cushions
-    "Chrome Kiss": "721",               # Chrome Kiss Planter
-    "David Bust": "5609",               # David Bust Side Table
-    "Papillion": "7113",                # Papillion Lidded Jar
-    "Classic": "7113",                  # Classic Lidded Jar
-    "Sweetkeeper": "594",               # Sweetkeeper Jar (keep original)
-    "Cozy": "2169",                     # Cozy Cappuccino Mug Set (keep original)
-    "Chinoiserie": "6325",              # Chinoiserie Birds Runner
-    "Palm Tree": "1985",                # Palm Tree Linen Napkins
-    "Bronze Palm": "1985",              # Bronze Palm Trees products
+    # Specific keywords found in your product titles (MOST SPECIFIC FIRST)
+    "David Bust Black Side Table": "5609",     # Exact match for David Bust Side Table
+    "David Bust White Side Table": "5609",     # Exact match for David Bust Side Table
+    "David Bust Side Table": "5609",           # David Bust Side Table
+    "David Bust": "5609",                      # David Bust Side Table
+    "Abracadabra": "3553",                     # BITOSSI Abracadabra products are mostly plates
+    "Destino": "3553",                         # Destino plates
+    "Incanto": "3553",                         # Incanto plates
+    "Aurora": "602",                           # Aurora Vase
+    "Azure": "602",                            # Azure Tower Vase
+    "Birdy": "602",                            # Birdy Vase (also Birdy Bowl exists - but vase is more common)
+    "Emma": "2784",                            # Emma Candle Holder
+    "Fancy": "6049",                           # Fancy Tea Cup Set
+    "Good Morning": "6049",                    # Good Morning Mug
+    "Bisou": "4295",                           # Bisou Photo Frame
+    "Ciao Bella": "4295",                     # Ciao Bella Photo Frame
+    "Je t'aime": "4295",                       # Je t'aime Photo Frame
+    "Retro": "4453",                           # Retro Cushions
+    "Chrome Kiss": "721",                      # Chrome Kiss Planter
+    "Papillion": "7113",                       # Papillion Lidded Jar
+    "Classic": "7113",                         # Classic Lidded Jar
+    "Sweetkeeper": "594",                      # Sweetkeeper Jar (keep original)
+    "Cozy": "2169",                            # Cozy Cappuccino Mug Set (keep original)
+    "Chinoiserie": "6325",                     # Chinoiserie Birds Runner
+    "Palm Tree": "1985",                       # Palm Tree Linen Napkins
+    "Bronze Palm": "1985",                     # Bronze Palm Trees products
 }
 
 # Default Google category - changed to most common category in your data
@@ -284,8 +287,32 @@ def map_to_google_category(category_name, title, brand):
     Map Joy&Co category to Google's product taxonomy
     Using a multi-level approach checking category, title keywords, and brand
     UPDATED: Now uses your manual Google Sheet assignments as priority
+    FIXED: More specific matching to prevent wrong assignments
     """
-    # First try to match the exact category
+    # First try to match EXACT product titles (most specific)
+    title_lower = title.lower()
+    for keyword, google_id in CATEGORY_MAPPING.items():
+        if len(keyword.split()) > 2:  # Multi-word specific matches first
+            if keyword.lower() == title_lower:
+                logging.info(f"EXACT title match: '{title}' -> {google_id}")
+                return google_id
+    
+    # Then try specific product name patterns
+    specific_patterns = [
+        "David Bust Black Side Table",
+        "David Bust White Side Table", 
+        "David Bust Side Table",
+        "Abracadabra Coffee Cups Set",
+        "Fancy Tea Cup Set with Saucer"
+    ]
+    
+    for pattern in specific_patterns:
+        if pattern.lower() in title_lower:
+            if pattern in CATEGORY_MAPPING:
+                logging.info(f"Specific pattern match: '{pattern}' in '{title}' -> {CATEGORY_MAPPING[pattern]}")
+                return CATEGORY_MAPPING[pattern]
+    
+    # Next try to match the exact category
     if category_name in CATEGORY_MAPPING:
         logging.info(f"Category match: '{category_name}' -> {CATEGORY_MAPPING[category_name]}")
         return CATEGORY_MAPPING[category_name]
@@ -296,12 +323,14 @@ def map_to_google_category(category_name, title, brand):
             logging.info(f"Category keyword match: '{keyword}' in '{category_name}' -> {google_id}")
             return google_id
     
-    # If category doesn't match, try to find keywords in the title
-    title_lower = title.lower()
+    # If category doesn't match, try to find keywords in the title (but be more careful)
     for keyword, google_id in CATEGORY_MAPPING.items():
         if len(keyword) > 3 and keyword.lower() in title_lower:  # Avoid short words
-            logging.info(f"Title keyword match: '{keyword}' in '{title}' -> {google_id}")
-            return google_id
+            # Skip generic words that might cause conflicts
+            generic_words = ['table', 'black', 'white', 'side', 'bust', 'set']
+            if keyword.lower() not in generic_words:
+                logging.info(f"Title keyword match: '{keyword}' in '{title}' -> {google_id}")
+                return google_id
             
     # If still not found, check if we can map by brand
     if brand in CATEGORY_MAPPING:
