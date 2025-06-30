@@ -149,10 +149,10 @@ MANUAL_CATEGORY_OVERRIDES = {
     "disks-planter-GFwX5i": "721",
     "pink-kiss-planter-wNl1qY": "721",
 
-    # Category 1985 - Linen Napkins (3 products)
-    "bronze-palm-trees-linen-napkins-set-of-4-9uqNPG": "1985",
-    "palm-tree-linen-napkins-set-of-4-Q7LhiL": "1985",
-    "ramadan-nights-linen-napkins-set-of-4-dTIbPj": "1985",
+    # Category 4203 - Linen Napkins (3 products)
+    "bronze-palm-trees-linen-napkins-set-of-4-9uqNPG": "4203",
+    "palm-tree-linen-napkins-set-of-4-Q7LhiL": "4203",
+    "ramadan-nights-linen-napkins-set-of-4-dTIbPj": "4203",
 
     # Category 2169 - Cappuccino Mug Set (1 product)
     "cozy-cappuccino-mug-set-ik8yLK": "2169",
@@ -267,9 +267,9 @@ MANUAL_CATEGORY_OVERRIDES = {
     "tissue-box-yellow-wzvC7o": "3553",
     "yellow-scalloped-breakfast-plate-A7zpla": "3553",
 
-    # Category 4009 - Ashtrays (2 products)
-    "jacks-cig-ashtray-large-1w8qhm": "4009",
-    "jacks-cig-ashtray-nPYWV9": "4009",
+    # Category 4082 - Ashtrays (2 products)
+    "jacks-cig-ashtray-large-1w8qhm": "4082",
+    "jacks-cig-ashtray-nPYWV9": "4082",
 
     # Category 4203 - Table Linens (1 product)
     "palm-tree-linen-napkins-set-of-4-H8N5uf": "4203",
