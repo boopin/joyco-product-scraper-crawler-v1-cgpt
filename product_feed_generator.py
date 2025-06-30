@@ -31,81 +31,240 @@ GOOGLE_MERCHANT_CSV = "google_feed/google_merchant_feed.csv"
 os.makedirs("google_feed", exist_ok=True)
 logging.info(f"Ensured google_feed directory exists")
 
-# Comprehensive Google Product Category Mapping
-# Based on https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt
-CATEGORY_MAPPING = {
-    # Tableware & Dining
-    "Tableware": "6208",                # Home & Garden > Kitchen & Dining > Tableware
-    "Cups": "6231",                     # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
-    "Mugs": "6231",                     # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
-    "Plates": "6210",                   # Home & Garden > Kitchen & Dining > Tableware > Plates
-    "Bowls": "6209",                    # Home & Garden > Kitchen & Dining > Tableware > Bowls
-    "Cutlery": "728",                   # Home & Garden > Kitchen & Dining > Tableware > Cutlery
-    "Glasses": "6228",                  # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Glasses & Tumblers
-    "Serving Plates": "734",            # Home & Garden > Kitchen & Dining > Tableware > Serving Trays & Platters
-    "Coffee": "6231",                   # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
-    "Tea": "6231",                      # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Cups & Mugs
-    "Dinnerware": "6208",               # Home & Garden > Kitchen & Dining > Tableware
-    "Dinner Set": "6208",               # Home & Garden > Kitchen & Dining > Tableware
+# ═══════════════════════════════════════════════════════════════════════════════════════
+# UPDATED Google Product Category Mapping - Based on Manual Google Sheet Assignments
+# Updated on June 26, 2025 to match your preferred categorization from 242 products
+# ═══════════════════════════════════════════════════════════════════════════════════════
 
-    # Home Decor
-    "Candles": "3655",                  # Home & Garden > Decor > Candles & Home Fragrances > Candles
-    "Candle Holders": "3309",           # Home & Garden > Decor > Candles & Home Fragrances > Candleholders
-    "Cushions": "635",                  # Home & Garden > Decor > Throw Pillows
-    "Decorative Cushions": "635",       # Home & Garden > Decor > Throw Pillows
-    "Vases": "644",                     # Home & Garden > Decor > Vases
-    "Wall Art": "639",                  # Home & Garden > Decor > Artwork
-    "Decorative Accents": "632",        # Home & Garden > Decor > Decorative Accents
-    "Decorative Trays": "7097",         # Home & Garden > Decor > Decorative Trays
-    "Centerpieces": "632",              # Home & Garden > Decor > Decorative Accents
-    "Table Linens": "7458",             # Home & Garden > Linens & Bedding > Table Linens
-    "Placemats": "7491",                # Home & Garden > Linens & Bedding > Table Linens > Placemats
-    "Napkins": "7492",                  # Home & Garden > Linens & Bedding > Table Linens > Napkins
-    "Table Runners": "7494",            # Home & Garden > Linens & Bedding > Table Linens > Table Runners
-    "Table Cloths": "7493",             # Home & Garden > Linens & Bedding > Table Linens > Tablecloths
+CATEGORY_MAPPING = {
+    # ═══════════════════════════════════════════════════════════════
+    # TABLEWARE & DINING (Based on your manual assignments)
+    # ═══════════════════════════════════════════════════════════════
     
-    # Furniture
-    "Side Tables": "6357",              # Home & Garden > Furniture > Tables > Side Tables
-    "Coffee Tables": "6320",            # Home & Garden > Furniture > Tables > Coffee Tables
-    "Console Tables": "6321",           # Home & Garden > Furniture > Tables > Console Tables
+    # Coffee Cups & Mugs → Category 6049 (Home & Garden > Kitchen & Dining > Tableware > Drinkware > Coffee & Tea Cups)
+    "Tableware": "3553",                # Changed from 6208 to 3553 (Plates category)
+    "Cups": "6049",                     # Changed from 6231 to 6049 (Coffee & Tea Cups)
+    "Mugs": "6049",                     # Changed from 6231 to 6049 (Coffee & Tea Cups)  
+    "Coffee": "6049",                   # Changed from 6231 to 6049 (Coffee & Tea Cups)
+    "Tea": "6049",                      # Changed from 6231 to 6049 (Coffee & Tea Cups)
+    "Coffee Cups": "6049",              # Coffee & Tea Cups
+    "Tea Cups": "6049",                 # Coffee & Tea Cups
+    "Cappuccino": "6049",               # Coffee & Tea Cups
+    "Mug": "6049",                      # Coffee & Tea Cups
     
-    # Home Fragrance
-    "Home Fragrance": "3654",           # Home & Garden > Decor > Candles & Home Fragrances
-    "Diffusers": "5098",                # Home & Garden > Decor > Candles & Home Fragrances > Air Fresheners > Diffusers
-    "Room Sprays": "5099",              # Home & Garden > Decor > Candles & Home Fragrances > Air Fresheners > Room Sprays
+    # Plates → Category 3553 (Home & Garden > Kitchen & Dining > Tableware > Plates)
+    "Plates": "3553",                   # Changed from 6210 to 3553
+    "Dinner Plate": "3553",             # Plates
+    "Dessert Plate": "3553",            # Plates
+    "Deep Plate": "3553",               # Plates
+    "Serving Plate": "3553",            # Plates
+    "Round Serving Plate": "3553",      # Plates
+    "Plate": "3553",                    # Plates
+    "Dinnerware": "3553",               # Changed from 6208 to 3553
+    "Dinner Set": "3553",               # Changed from 6208 to 3553
     
-    # Seasonal & Holiday Decor
-    "Holiday": "3617",                  # Home & Garden > Decor > Seasonal & Holiday Decorations
-    "Christmas": "5506",                # Home & Garden > Decor > Seasonal & Holiday Decorations > Christmas Decorations
-    "Ramadan": "3617",                  # Home & Garden > Decor > Seasonal & Holiday Decorations
-    "Eid": "3617",                      # Home & Garden > Decor > Seasonal & Holiday Decorations
-    "Special Occasion": "3617",         # Home & Garden > Decor > Seasonal & Holiday Decorations
+    # Bowls → Category 3498 (Home & Garden > Kitchen & Dining > Tableware > Bowls)
+    "Bowls": "3498",                    # Changed from 6209 to 3498
+    "Bowl": "3498",                     # Bowls
     
-    # Kitchen & Cooking
-    "Cookware": "672",                  # Home & Garden > Kitchen & Dining > Cookware
-    "Bakeware": "673",                  # Home & Garden > Kitchen & Dining > Bakeware
+    # Glasses & Drinkware → Category 674 or 2951
+    "Glasses": "674",                   # Changed from 6228 to 674 (Glassware & Drinkware)
+    "Glass": "674",                     # Glassware & Drinkware
+    "Cocktail Glass": "674",            # Glassware & Drinkware
+    "Tumblers": "2951",                 # Based on your Hobnail Tumblers assignment
+    "Tumbler": "2951",                  # Tumblers
     
-    # Gift Items
-    "Gift": "5394",                     # Occasions & Gifts > Gift Giving
-    "Gift Box": "5424",                 # Occasions & Gifts > Gift Giving > Gift Sets
+    # Serving Items → Category 674
+    "Serving Plates": "3553",           # Changed from 734 to 3553 (consistent with plates)
+    "Cake Stand": "674",                # Based on Crystal Cake Stand assignment
+    "Serving": "3553",                  # Plates category
     
-    # Other Categories
-    "Accessories": "166",               # Home & Garden > Decor
-    "Home": "166",                      # Home & Garden > Decor
+    # Jugs & Teapots → Category 3330 (Home & Garden > Kitchen & Dining > Tableware > Serveware > Pitchers & Carafes)
+    "Jug": "3330",                      # Based on Hobnail Jug assignment
+    "Teapot": "3330",                   # Teapots
+    "Pitcher": "3330",                  # Pitchers & Carafes
+    "Hobnail": "3330",                  # Based on your Hobnail product assignments
     
-    # Brands (map brand names to most common product category)
-    "BITOSSI": "6208",                  # Home & Garden > Kitchen & Dining > Tableware
-    "Seletti": "632",                   # Home & Garden > Decor > Decorative Accents
-    "Joy & Co": "166",                  # Home & Garden > Decor
-    "KERSTEN": "644",                   # Home & Garden > Decor > Vases (for many KERSTEN products)
-    "KLIMCHI": "6228",                  # Home & Garden > Kitchen & Dining > Tableware > Drinkware > Glasses & Tumblers
-    "ANNA + NINA": "6208",              # Home & Garden > Kitchen & Dining > Tableware
-    "WERNS": "644",                     # Home & Garden > Decor > Vases
-    "EDION": "632"                      # Home & Garden > Decor > Decorative Accents
+    # Other Cutlery
+    "Cutlery": "728",                   # Keep existing
+    
+    # ═══════════════════════════════════════════════════════════════
+    # HOME DECOR (Based on your manual assignments)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Vases → Category 602 (Home & Garden > Decor > Vases) - YOUR MOST COMMON CATEGORY
+    "Vases": "602",                     # Changed from 644 to 602
+    "Vase": "602",                      # Vases
+    "Tower Vase": "602",                # Vases
+    
+    # Candle Holders → Category 2784 (Home & Garden > Decor > Home Fragrance Accessories > Candle Holders)
+    "Candle Holders": "2784",           # Changed from 3309 to 2784
+    "Candle Holder": "2784",            # Candle Holders
+    "Candlestick": "2784",              # Candle Holders
+    "Candelabra": "2784",               # Candle Holders (based on your assignments)
+    
+    # Candles → Category 588 (Home & Garden > Decor > Candles & Home Fragrances > Candles)
+    "Candles": "588",                   # Changed from 3655 to 588
+    "Candle": "588",                    # Candles
+    "Taper Candle": "588",              # Candles
+    "Dip Dye": "588",                   # Based on Dip Dye Candle assignment
+    
+    # Photo Frames → Category 4295 (Home & Garden > Decor > Picture Frames)
+    "Photo Frame": "4295",              # Based on your Photo Frame assignments
+    "Picture Frame": "4295",            # Picture Frames
+    "Frame": "4295",                    # Picture Frames
+    
+    # Cushions → Category 4453 (Home & Garden > Decor > Throw Pillows)
+    "Cushions": "4453",                 # Changed from 635 to 4453
+    "Cushion": "4453",                  # Throw Pillows
+    "Decorative Cushions": "4453",      # Throw Pillows
+    
+    # Wall Art → Category 500044 (Artwork - based on Comic Art assignment)
+    "Wall Art": "500044",               # Changed from 639 to 500044
+    "Artwork": "500044",                # Artwork
+    "Comic Art": "500044",              # Based on your Comic Art assignment
+    "Art": "500044",                    # Artwork
+    
+    # Decorative Items → Category 500045 (Figurines - based on Gorilla Gentleman assignment)
+    "Decorative Accents": "500045",     # Changed from 632 to 500045
+    "Figurines": "500045",              # Figurines
+    "Decorative": "500045",             # Figurines
+    "Sculpture": "500045",              # Figurines
+    "Gentleman": "500045",              # Based on Gorilla Gentleman
+    "Gorilla": "500045",                # Based on Gorilla Gentleman
+    
+    # Planters → Category 721 (Home & Garden > Lawn & Garden > Gardening > Planters & Pots)
+    "Planter": "721",                   # Based on your Planter assignments
+    "Planters": "721",                  # Planters & Pots
+    
+    # Storage & Organization → Category 7113 (Jars) or 6456 (Trays)
+    "Jar": "7113",                      # Based on Lidded Jar assignment (changed from 594)
+    "Lidded Jar": "7113",               # Storage Jars
+    "Trinket Tray": "6456",             # Based on your Trinket Tray assignment
+    "Tray": "6456",                     # Trays
+    "Decorative Trays": "6456",         # Changed from 7097 to 6456
+    
+    # Ashtrays → Category 4009 (Home & Garden > Decor > Ashtrays)
+    "Ashtray": "4009",                  # Based on your Ashtray assignment
+    
+    # ═══════════════════════════════════════════════════════════════
+    # TABLE LINENS (Based on your manual assignments)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Table Linens → Various categories based on your assignments
+    "Table Linens": "1985",             # Changed from 7458 to 1985 (Napkins)
+    "Napkins": "1985",                  # Based on your Napkins assignment (changed from 7492)
+    "Linen Napkins": "1985",            # Napkins
+    "Placemats": "2547",                # Based on your Placemat assignment (changed from 7491)
+    "Placemat": "2547",                 # Placemats
+    "Linen Placemat": "2547",           # Placemats
+    "Table Runners": "6325",            # Based on your Runner assignment (changed from 7494)
+    "Runner": "6325",                   # Table Runners
+    "Linen Runner": "6325",             # Table Runners
+    "Table Cloths": "7493",             # Keep existing
+    
+    # ═══════════════════════════════════════════════════════════════
+    # FURNITURE (Based on your manual assignments)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Tables → Category 5609 (Side Tables - based on David Bust assignment)
+    "Side Tables": "5609",              # Changed from 6357 to 5609
+    "Side Table": "5609",               # Side Tables
+    "Coffee Tables": "6320",            # Keep existing
+    "Console Tables": "6321",           # Keep existing
+    "Table": "5609",                    # Default to Side Tables
+    
+    # ═══════════════════════════════════════════════════════════════
+    # HOME FRAGRANCE (Based on your manual assignments)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Home Fragrance → Category 4741 (based on Cello suite assignment)
+    "Home Fragrance": "4741",           # Changed from 3654 to 4741
+    "Diffusers": "4741",                # Changed from 5098 to 4741
+    "Room Sprays": "5099",              # Keep existing
+    "Fragrance": "4741",                # Home Fragrance
+    "Cello": "4741",                    # Based on Cello suite assignment
+    "Suite": "4741",                    # Based on Cello suite assignment
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SEASONAL & HOLIDAY DECOR
+    # ═══════════════════════════════════════════════════════════════
+    
+    "Holiday": "3617",                  # Keep existing
+    "Christmas": "5506",                # Keep existing
+    "Ramadan": "3617",                  # Keep existing
+    "Eid": "3617",                      # Keep existing
+    "Special Occasion": "3617",         # Keep existing
+    
+    # ═══════════════════════════════════════════════════════════════
+    # KITCHEN & COOKING
+    # ═══════════════════════════════════════════════════════════════
+    
+    "Cookware": "672",                  # Keep existing
+    "Bakeware": "673",                  # Keep existing
+    
+    # ═══════════════════════════════════════════════════════════════
+    # GIFT ITEMS
+    # ═══════════════════════════════════════════════════════════════
+    
+    "Gift": "5394",                     # Keep existing
+    "Gift Box": "5424",                 # Keep existing
+    
+    # ═══════════════════════════════════════════════════════════════
+    # BRAND-SPECIFIC MAPPINGS (Based on your data analysis)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Brands mapped to their most common category in your Google Sheet data
+    "BITOSSI": "3553",                  # Most BITOSSI products are plates (changed from 6208)
+    "KERSTEN": "602",                   # Most KERSTEN products are vases (changed from 644)
+    "KLIMCHI": "674",                   # Most KLIMCHI products are glassware (changed from 6228)
+    "WERNS": "602",                     # Most WERNS products are vases (changed from 644)
+    "ANNA + NINA": "6049",              # Most ANNA+NINA products are cups (changed from 6208)
+    "EDION": "4741",                    # EDION products are home fragrance (changed from 632)
+    "HOME STUDYO": "2784",              # HOME STUDYO products are candle holders
+    "JOY&CO PICKS": "500045",           # JOY&CO PICKS are mostly decorative items
+    "VAL POTTERY": "6049",              # VAL POTTERY are cups/mugs
+    "SELETTI": "3330",                  # SELETTI products are serveware (changed from 632)
+    "Joy & Co": "602",                  # Default to vases (changed from 166)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # OTHER CATEGORIES
+    # ═══════════════════════════════════════════════════════════════
+    
+    "Accessories": "500045",            # Changed from 166 to 500045 (Figurines)
+    "Home": "602",                      # Changed from 166 to 602 (Vases - most common)
+    
+    # ═══════════════════════════════════════════════════════════════
+    # SPECIFIC PRODUCT KEYWORDS (Based on your product titles)
+    # ═══════════════════════════════════════════════════════════════
+    
+    # Specific keywords found in your product titles
+    "Abracadabra": "3553",              # BITOSSI Abracadabra products are mostly plates
+    "Destino": "3553",                  # Destino plates
+    "Incanto": "3553",                  # Incanto plates
+    "Aurora": "602",                    # Aurora Vase
+    "Azure": "602",                     # Azure Tower Vase
+    "Birdy": "602",                     # Birdy Vase (also Birdy Bowl exists)
+    "Emma": "2784",                     # Emma Candle Holder
+    "Fancy": "6049",                    # Fancy Tea Cup Set
+    "Good Morning": "6049",             # Good Morning Mug
+    "Bisou": "4295",                    # Bisou Photo Frame
+    "Ciao Bella": "4295",               # Ciao Bella Photo Frame
+    "Je t'aime": "4295",                # Je t'aime Photo Frame
+    "Retro": "4453",                    # Retro Cushions
+    "Chrome Kiss": "721",               # Chrome Kiss Planter
+    "David Bust": "5609",               # David Bust Side Table
+    "Papillion": "7113",                # Papillion Lidded Jar
+    "Classic": "7113",                  # Classic Lidded Jar
+    "Sweetkeeper": "594",               # Sweetkeeper Jar (keep original)
+    "Cozy": "2169",                     # Cozy Cappuccino Mug Set (keep original)
+    "Chinoiserie": "6325",              # Chinoiserie Birds Runner
+    "Palm Tree": "1985",                # Palm Tree Linen Napkins
+    "Bronze Palm": "1985",              # Bronze Palm Trees products
 }
 
-# Default Google category for home decor
-DEFAULT_GOOGLE_CATEGORY = "166"        # Home & Garden > Decor
+# Default Google category - changed to most common category in your data
+DEFAULT_GOOGLE_CATEGORY = "602"        # Home & Garden > Decor > Vases (most common in your data)
 
 # User-Agent rotation for avoiding bot detection
 USER_AGENTS = [
@@ -124,26 +283,33 @@ def map_to_google_category(category_name, title, brand):
     """
     Map Joy&Co category to Google's product taxonomy
     Using a multi-level approach checking category, title keywords, and brand
+    UPDATED: Now uses your manual Google Sheet assignments as priority
     """
     # First try to match the exact category
     if category_name in CATEGORY_MAPPING:
+        logging.info(f"Category match: '{category_name}' -> {CATEGORY_MAPPING[category_name]}")
         return CATEGORY_MAPPING[category_name]
         
     # Next, look for keywords in the category
     for keyword, google_id in CATEGORY_MAPPING.items():
         if keyword.lower() in category_name.lower():
+            logging.info(f"Category keyword match: '{keyword}' in '{category_name}' -> {google_id}")
             return google_id
     
     # If category doesn't match, try to find keywords in the title
+    title_lower = title.lower()
     for keyword, google_id in CATEGORY_MAPPING.items():
-        if len(keyword) > 3 and keyword.lower() in title.lower():  # Avoid short words
+        if len(keyword) > 3 and keyword.lower() in title_lower:  # Avoid short words
+            logging.info(f"Title keyword match: '{keyword}' in '{title}' -> {google_id}")
             return google_id
             
     # If still not found, check if we can map by brand
     if brand in CATEGORY_MAPPING:
+        logging.info(f"Brand match: '{brand}' -> {CATEGORY_MAPPING[brand]}")
         return CATEGORY_MAPPING[brand]
     
     # Default fallback
+    logging.info(f"Using default category for: '{title}' ({brand}) -> {DEFAULT_GOOGLE_CATEGORY}")
     return DEFAULT_GOOGLE_CATEGORY
 
 def extract_product_data(url):
@@ -256,8 +422,9 @@ def extract_product_data(url):
         
         category = " > ".join(breadcrumbs) if breadcrumbs else "Uncategorized"
         
-        # Map to Google product category
+        # Map to Google product category using updated mapping
         google_product_category = map_to_google_category(category, title, brand)
+        logging.info(f"Final Google category assignment: {google_product_category} for '{title}'")
         
         # Check if product is in stock
         stock_status = "in stock"
@@ -467,7 +634,11 @@ def generate_xml(products):
         return False
 
 def main():
-    logging.info("Starting product feed generator")
+    logging.info("Starting product feed generator with UPDATED category mappings")
+    logging.info("=" * 80)
+    logging.info("🔄 Using manual Google Sheet category assignments from June 26, 2025")
+    logging.info("📊 Based on analysis of 242 products with preferred categorization")
+    logging.info("=" * 80)
     
     try:
         # Verify input file exists
@@ -493,7 +664,7 @@ def main():
         if products:
             # Create a test product to debug CSV generation
             test_product = products[0]
-            logging.info(f"Debug - First product: {test_product['title']}")
+            logging.info(f"Debug - First product: {test_product['title']} -> Category: {test_product['google_product_category']}")
             
             # Create the standard feeds
             xml_success = generate_xml(products)
@@ -504,6 +675,11 @@ def main():
             
             if csv_success and xml_success and google_success:
                 print(f"✅ Successfully generated feeds for {len(products)} products.")
+                print(f"📁 Files created:")
+                print(f"   - {CSV_OUTPUT}")
+                print(f"   - {XML_OUTPUT}") 
+                print(f"   - {GOOGLE_MERCHANT_CSV}")
+                print(f"🎯 Using UPDATED category mappings based on your manual assignments")
             else:
                 if not csv_success:
                     print(f"⚠️ Failed to generate standard CSV feed.")
