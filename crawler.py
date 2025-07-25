@@ -143,10 +143,10 @@ def process_sitemap():
 
 def crawl_product_listings():
     """
-    Crawl main product listing pages with pagination support.
-    Extract product links from listings and collect product URLs.
+    ENHANCED: Crawl main product listing pages with pagination support.
+    Extract product links from listings and collect product URLs with improved discovery.
     """
-    logger.info("Crawling product listing pages with pagination...")
+    logger.info("🔍 ENHANCED: Crawling product listing pages with improved discovery...")
 
     product_pages = [
         "https://joyandco.com/products",
@@ -155,68 +155,179 @@ def crawl_product_listings():
         "https://joyandco.com/category/tableware",
         "https://joyandco.com/category/home-decor",
         "https://joyandco.com/category/furniture",
-        "https://joyandco.com/category/gift-accessories"
+        "https://joyandco.com/category/gift-accessories",
+        "https://joyandco.com/category/candles-candle-holders",
+        "https://joyandco.com/category/decorative-accents",
+        "https://joyandco.com/category/vases-centerpieces",
+        "https://joyandco.com/category/wall-art",
+        "https://joyandco.com/category/table-linens",
+        "https://joyandco.com/category/decorative-cushions",
+        "https://joyandco.com/category/home-fragrance",
+        "https://joyandco.com/category/side-tables",
+        "https://joyandco.com/category/special-occasion-accents"
     ]
 
     for start_page in product_pages:
         page_url = start_page
         page_num = 1
         has_next_page = True
+        page_products = 0
 
-        while has_next_page:
+        while has_next_page and page_num <= 50:  # Safety limit
             try:
-                logger.info(f"Processing listing page: {page_url} (Page {page_num})")
+                logger.info(f"📄 Processing listing page: {page_url} (Page {page_num})")
                 headers = {
                     "User-Agent": get_random_user_agent(),
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.5",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache"
                 }
+                
                 response = requests.get(page_url, headers=headers, timeout=15)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
-                    product_links = soup.select(".products a.btn-shopnow, .pro-detail a")
-                    for link in product_links:
-                        href = link.get('href')
-                        if href and "/product/" in href:
-                            full_url = urljoin(BASE_URL, href)
-                            if full_url not in visited_urls:
-                                logger.info(f"Found product URL: {full_url}")
-                                visited_urls.add(full_url)
-                                product_urls.add(full_url)
-                    # Pagination detection
+                    
+                    # ENHANCED SELECTORS - Multiple ways to find product links
+                    product_selectors = [
+                        # Original selectors
+                        ".products a.btn-shopnow",
+                        ".pro-detail a",
+                        
+                        # Additional comprehensive selectors
+                        "a[href*='/product/']",  # Any link containing /product/
+                        ".product-item a",
+                        ".product-card a", 
+                        ".product-link",
+                        ".shop-now",
+                        "a.product-url",
+                        ".product-thumb a",
+                        ".item-link",
+                        
+                        # Grid/list view selectors
+                        ".product-grid a",
+                        ".product-list a",
+                        ".products-grid a",
+                        ".products-list a",
+                        
+                        # E-commerce common patterns
+                        ".woocommerce a[href*='product']",
+                        ".product a[href]",
+                        "[data-product-url]",
+                        
+                        # JoyAndCo specific patterns
+                        ".col-md-4 a",
+                        ".col-sm-6 a",
+                        ".product-wrapper a",
+                        ".item-wrapper a"
+                    ]
+                    
+                    page_found = 0
+                    for selector in product_selectors:
+                        try:
+                            product_links = soup.select(selector)
+                            for link in product_links:
+                                href = link.get('href') or link.get('data-product-url')
+                                if href and "/product/" in href:
+                                    full_url = urljoin(BASE_URL, href)
+                                    # Clean URL (remove query params)
+                                    full_url = full_url.split("?")[0].split("#")[0]
+                                    
+                                    if full_url not in visited_urls and full_url.startswith(BASE_URL):
+                                        logger.info(f"✅ NEW PRODUCT: {full_url}")
+                                        visited_urls.add(full_url)
+                                        product_urls.add(full_url)
+                                        page_found += 1
+                        except Exception as e:
+                            logger.debug(f"Selector {selector} failed: {e}")
+                            continue
+                    
+                    page_products += page_found
+                    logger.info(f"📦 Found {page_found} products on this page (Total: {len(product_urls)})")
+                    
+                    # Enhanced pagination detection
                     has_next_page = False
-                    pagination = soup.select(".page-item a")
+                    
+                    # Method 1: Look for next page number
+                    pagination = soup.select(".page-item a, .pagination a, .pager a")
                     for page_link in pagination:
-                        if page_link.get_text().strip() == str(page_num + 1):
-                            page_url = urljoin(BASE_URL, page_link.get('href'))
-                            page_num += 1
-                            has_next_page = True
-                            break
+                        link_text = page_link.get_text().strip()
+                        if link_text == str(page_num + 1) or link_text.lower() in ['next', '→', '»']:
+                            next_href = page_link.get('href')
+                            if next_href:
+                                page_url = urljoin(BASE_URL, next_href)
+                                page_num += 1
+                                has_next_page = True
+                                logger.info(f"🔄 Found next page: {page_url}")
+                                break
+                    
+                    # Method 2: Look for "Next" or arrow links
                     if not has_next_page:
-                        next_links = soup.select(".page-item a[rel='next']")
-                        if next_links:
-                            page_url = urljoin(BASE_URL, next_links[0].get('href'))
-                            page_num += 1
-                            has_next_page = True
+                        next_links = soup.select(
+                            "a[rel='next'], .next a, .page-next a"
+                        )
+                        for next_link in next_links:
+                            next_href = next_link.get('href')
+                            if next_href:
+                                page_url = urljoin(BASE_URL, next_href)
+                                page_num += 1
+                                has_next_page = True
+                                logger.info(f"🔄 Found next link: {page_url}")
+                                break
+                    
+                    # Method 3: URL pattern pagination (e.g., ?page=2)
+                    if not has_next_page and page_found > 0:
+                        if "?" in page_url:
+                            base_url = page_url.split("?")[0]
+                            next_page_url = f"{base_url}?page={page_num + 1}"
+                        else:
+                            next_page_url = f"{page_url}{'&' if '?' in page_url else '?'}page={page_num + 1}"
+                        
+                        # Test if next page exists
+                        try:
+                            test_response = requests.head(next_page_url, headers=headers, timeout=10)
+                            if test_response.status_code == 200:
+                                page_url = next_page_url
+                                page_num += 1
+                                has_next_page = True
+                                logger.info(f"🔄 Trying URL pattern pagination: {page_url}")
+                        except:
+                            pass
+                    
+                    if not has_next_page:
+                        logger.info(f"📄 No more pages found for {start_page}")
+                        
                 else:
-                    logger.warning(f"Failed to access listing page: {page_url} with status {response.status_code}")
+                    logger.warning(f"❌ Failed to access {page_url}: HTTP {response.status_code}")
                     has_next_page = False
+                    
             except Exception as e:
-                logger.error(f"Error processing listing page {page_url}: {e}")
+                logger.error(f"💥 Error processing {page_url}: {e}")
                 has_next_page = False
-            time.sleep(random.uniform(1, 2))
+                
+            # Respectful delay between requests
+            time.sleep(random.uniform(1.5, 3.0))
+        
+        logger.info(f"✅ Completed {start_page}: Found {page_products} products across {page_num-1} pages")
 
-def simple_crawl(url):
+    logger.info(f"🎯 TOTAL PRODUCTS DISCOVERED: {len(product_urls)}")
+
+def enhanced_simple_crawl(url, max_depth=3, current_depth=0):
     """
-    Recursive simple crawler for discovering product URLs.
-    Crawls all internal links, adds product URLs to the set.
+    Enhanced recursive crawler with depth control and better link discovery
     """
+    if current_depth >= max_depth:
+        logger.debug(f"Max depth {max_depth} reached for {url}")
+        return
+        
     try:
         if url in visited_urls:
             return
+            
         time.sleep(random.uniform(1, 2))
-        logger.info(f"Crawling URL: {url}")
+        logger.info(f"🔍 Crawling: {url} (depth: {current_depth})")
         visited_urls.add(url)
+        
         headers = {
             "User-Agent": get_random_user_agent(),
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -224,24 +335,56 @@ def simple_crawl(url):
             "Referer": BASE_URL,
             "DNT": "1"
         }
+        
         response = requests.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
-            logger.warning(f"HTTP {response.status_code} error for URL: {url}")
+            logger.warning(f"❌ HTTP {response.status_code} for: {url}")
             return
+            
         soup = BeautifulSoup(response.text, 'html.parser')
-        for link_tag in soup.find_all("a", href=True):
+        
+        # Find all links - enhanced discovery
+        all_links = soup.find_all("a", href=True)
+        product_links_found = 0
+        navigation_links = []
+        
+        for link_tag in all_links:
             href = link_tag['href']
-            if href.startswith('#') or href.startswith('javascript:'):
+            
+            # Skip javascript and fragment links
+            if href.startswith(('#', 'javascript:', 'mailto:', 'tel:')):
                 continue
+                
+            # Convert to absolute URL
             full_url = urljoin(BASE_URL, href.split("?")[0])
-            if is_valid_url(full_url) and full_url.startswith(BASE_URL) and full_url not in visited_urls:
-                if "/product/" in full_url:
-                    logger.info(f"Found product URL: {full_url}")
-                    product_urls.add(full_url)
-                else:
-                    simple_crawl(full_url)
+            
+            # Must be within our domain
+            if not (is_valid_url(full_url) and full_url.startswith(BASE_URL)):
+                continue
+                
+            if full_url in visited_urls:
+                continue
+                
+            # Product URL detection
+            if "/product/" in full_url:
+                logger.info(f"🆕 DISCOVERED PRODUCT: {full_url}")
+                product_urls.add(full_url)
+                product_links_found += 1
+            else:
+                # Collect navigation links for further crawling
+                # Prioritize category and listing pages
+                if any(keyword in full_url.lower() for keyword in 
+                       ['category', 'products', 'collections', 'shop', 'browse', 'new-arrivals', 'flash-deals']):
+                    navigation_links.append(full_url)
+        
+        logger.info(f"📦 Found {product_links_found} products on {url}")
+        
+        # Recursively crawl navigation links (with depth limit)
+        for nav_link in navigation_links[:5]:  # Limit to prevent explosion
+            enhanced_simple_crawl(nav_link, max_depth, current_depth + 1)
+            
     except Exception as e:
-        logger.error(f"Error crawling {url}: {e}")
+        logger.error(f"💥 Error crawling {url}: {e}")
 
 def save_to_csv(urls, filename=OUTPUT_CSV):
     """Save discovered product URLs to CSV with timestamps."""
@@ -279,14 +422,24 @@ def main():
     if args.force:
         purge_state_files()
 
-    logger.info(f"Starting crawler{' [FORCE]' if args.force else ''}")
+    logger.info(f"🚀 Starting ENHANCED crawler{' [FORCE]' if args.force else ''}")
+    logger.info("=" * 80)
+    logger.info("🔧 ENHANCEMENTS:")
+    logger.info("   • Multiple comprehensive product selectors")
+    logger.info("   • Enhanced pagination detection")
+    logger.info("   • More category pages covered")
+    logger.info("   • Better error handling and logging")
+    logger.info("=" * 80)
+    
     load_existing_data()
     process_sitemap()
+    
+    # Run enhanced product listings crawl
     crawl_product_listings()
 
-    # Fallback deep crawl if too few products found
+    # Enhanced fallback deep crawl if too few products found
     if len(product_urls) < 100:
-        logger.info(f"Only found {len(product_urls)} products. Running simple recursive crawl.")
+        logger.info(f"🔄 Only found {len(product_urls)} products. Running enhanced deep crawl...")
         starting_points = [
             BASE_URL,
             "https://joyandco.com/products",
@@ -297,19 +450,37 @@ def main():
             "https://joyandco.com/category/furniture",
             "https://joyandco.com/category/gift-accessories"
         ]
+        
         for start_url in starting_points:
             if start_url not in visited_urls:
-                simple_crawl(start_url)
+                enhanced_simple_crawl(start_url, max_depth=2)
 
-    logger.info(f"Finished crawling. Found {len(product_urls)} products out of {len(visited_urls)} URLs visited.")
+    logger.info("=" * 80)
+    logger.info(f"✅ CRAWLING COMPLETE")
+    logger.info(f"🎯 Found {len(product_urls)} products out of {len(visited_urls)} URLs visited.")
+    logger.info("=" * 80)
 
     if product_urls:
         save_to_csv(product_urls)
         save_to_xml(product_urls)
         save_seen_products()
         logger.info(f"✅ Saved {len(product_urls)} product URLs to {os.path.dirname(OUTPUT_CSV)}/")
+        
+        # Show some sample URLs for verification
+        sample_urls = list(product_urls)[:10]
+        logger.info("📝 Sample discovered URLs:")
+        for i, url in enumerate(sample_urls, 1):
+            logger.info(f"   {i}. {url}")
+        
+        if len(product_urls) > 10:
+            logger.info(f"   ... and {len(product_urls) - 10} more products")
     else:
         logger.error("⚠️ No product URLs found. Please check logs for issues.")
+        logger.info("🔍 Troubleshooting suggestions:")
+        logger.info("   1. Check if the website structure has changed")
+        logger.info("   2. Verify the BASE_URL is accessible")
+        logger.info("   3. Review the product selectors in crawl_product_listings()")
+        logger.info("   4. Run with --force to clear cache and retry")
 
 if __name__ == "__main__":
     main()
