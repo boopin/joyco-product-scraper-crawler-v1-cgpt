@@ -355,6 +355,7 @@ CATEGORY_MAPPING = {
     "Tea Cups": "6049",
     "Cappuccino": "6049",
     "Mug": "6049",
+    "Cup": "6049",
     
     # Plates → Category 3553
     "Plates": "3553",
@@ -379,6 +380,8 @@ CATEGORY_MAPPING = {
     "Tumblers": "2951",
     "Tumbler": "2951",
     "Cake Stand": "674",
+    "Goblets": "674",
+    "Goblet": "674",
     
     # Jugs & Teapots → Category 3330
     "Jug": "3330",
@@ -444,17 +447,17 @@ CATEGORY_MAPPING = {
     "Trinket Tray": "6456",
     "Tray": "6456",
     "Decorative Trays": "6456",
-    "Ashtray": "4009",
+    "Ashtray": "4082",
     
     # Table Linens
-    "Napkins": "1985",
-    "Linen Napkins": "1985",
+    "Napkins": "4203",
+    "Linen Napkins": "4203",
     "Placemats": "2547",
     "Placemat": "2547",
     "Linen Placemat": "2547",
     "Runner": "6325",
     "Linen Runner": "6325",
-    "Table Linens": "1985",
+    "Table Linens": "4203",
     "Table Cloths": "7493",
     
     # Furniture
@@ -471,6 +474,7 @@ CATEGORY_MAPPING = {
     "Cello": "4741",
     "Suite": "4741",
     "Room Sprays": "5099",
+    "Oud": "4741",
     
     # ═══════════════════════════════════════════════════════════════
     # SEASONAL & HOLIDAY DECOR
@@ -543,8 +547,13 @@ CATEGORY_MAPPING = {
     "Sweetkeeper": "594",
     "Cozy": "2169",
     "Chinoiserie": "6325",
-    "Palm Tree": "1985",
-    "Bronze Palm": "1985",
+    "Palm Tree": "4203",
+    "Bronze Palm": "4203",
+    "Set of 6": "674",
+    "Colored": "674",
+    "Blue/Green": "674",
+    "Che Bello": "3553",
+    "Pearl Parade": "3498",
 }
 
 # Default Google category
@@ -619,7 +628,10 @@ def map_to_google_category(product_id, category_name, title, brand, manual_overr
         "Abracadabra Coffee Cups Set",
         "Fancy Tea Cup Set with Saucer",
         "Good Morning Mug",
-        "Cozy Cappuccino Mug Set"
+        "Cozy Cappuccino Mug Set",
+        "Set of 6 Colored Goblets",
+        "Che Bello Dessert Plate",
+        "Pearl Parade Bowl"
     ]
     
     for pattern in specific_patterns:
@@ -687,23 +699,57 @@ def extract_product_data(url, manual_overrides):
         # Extract product ID from URL
         product_id = url.split("/")[-1]
         
-        # Get title
-        title_tag = soup.select_one(".col-md-6 h2")
-        title = title_tag.get_text(strip=True) if title_tag else "No Title"
+        # Get title - Enhanced selectors
+        title_selectors = [
+            ".col-md-6 h2",
+            "h1",
+            ".product-title",
+            ".product-name",
+            "h2.product-title",
+            ".page-title"
+        ]
+        
+        title = "No Title"
+        for selector in title_selectors:
+            title_tag = soup.select_one(selector)
+            if title_tag:
+                title = title_tag.get_text(strip=True)
+                break
+                
         logging.info(f"Title extracted: {title}")
         
-        # Get description
-        description_div = soup.select_one("#description .text-body")
-        description = description_div.get_text(strip=True) if description_div else "No Description"
+        # Get description - Enhanced extraction
+        description_selectors = [
+            "#description .text-body",
+            ".product-description",
+            ".description",
+            ".product-content"
+        ]
+        
+        description = "No Description"
+        for selector in description_selectors:
+            description_div = soup.select_one(selector)
+            if description_div:
+                description = description_div.get_text(strip=True)
+                break
+                
         logging.info(f"Description extracted: {len(description)} characters")
         
-        # Get image
-        primary_image_element = soup.select_one(".cz-preview-item.active img.cz-image-zoom")
-        if primary_image_element and 'src' in primary_image_element.attrs:
-            image_link = primary_image_element['src']
-        else:
-            image_element = soup.select_one(".cz-preview-item img.cz-image-zoom")
-            image_link = image_element['src'] if image_element and 'src' in image_element.attrs else ""
+        # Get image - Enhanced image extraction
+        image_selectors = [
+            ".cz-preview-item.active img.cz-image-zoom",
+            ".cz-preview-item img.cz-image-zoom",
+            ".product-image img",
+            ".main-image img",
+            "img.product-photo"
+        ]
+        
+        image_link = ""
+        for selector in image_selectors:
+            img_element = soup.select_one(selector)
+            if img_element and 'src' in img_element.attrs:
+                image_link = img_element['src']
+                break
         
         logging.info(f"Primary image extracted: {image_link}")
         
@@ -730,31 +776,61 @@ def extract_product_data(url, manual_overrides):
         
         additional_images = [img for img in all_images if img != image_link]
         
-        # Get price
-        price_div = soup.select_one(".price")
+        # Get price - Enhanced price extraction
+        price_selectors = [
+            ".price",
+            ".product-price",
+            ".price-current",
+            ".current-price"
+        ]
+        
         price = "0.00"
-        if price_div:
-            price_text = price_div.get_text(strip=True)
-            price_match = re.search(r'(\d+(?:\.\d+)?)', price_text)
-            if price_match:
-                price = price_match.group(1)
-                if '.' not in price:
-                    price = f"{price}.00"
-                elif len(price.split('.')[1]) == 1:
-                    price = f"{price}0"
+        for selector in price_selectors:
+            price_div = soup.select_one(selector)
+            if price_div:
+                price_text = price_div.get_text(strip=True)
+                price_match = re.search(r'(\d+(?:\.\d+)?)', price_text)
+                if price_match:
+                    price = price_match.group(1)
+                    if '.' not in price:
+                        price = f"{price}.00"
+                    elif len(price.split('.')[1]) == 1:
+                        price = f"{price}0"
+                    break
                     
         logging.info(f"Price extracted: {price}")
         
-        # Get brand
-        brand_tag = soup.select_one("p.pic-info")
-        brand = brand_tag.get_text(strip=True) if brand_tag else "Joy & Co"
+        # Get brand - Enhanced brand extraction
+        brand_selectors = [
+            "p.pic-info",
+            ".brand-name",
+            ".product-brand",
+            ".brand"
+        ]
+        
+        brand = "Joy & Co"
+        for selector in brand_selectors:
+            brand_tag = soup.select_one(selector)
+            if brand_tag:
+                brand = brand_tag.get_text(strip=True)
+                break
+                
         logging.info(f"Brand extracted: {brand}")
         
-        # Get category
+        # Get category - Enhanced breadcrumb extraction
         breadcrumbs = []
-        breadcrumb_elements = soup.select(".breadcrumbs a")
-        for crumb in breadcrumb_elements[1:-1]:
-            breadcrumbs.append(crumb.get_text(strip=True))
+        breadcrumb_selectors = [
+            ".breadcrumbs a",
+            ".breadcrumb a",
+            ".navigation a"
+        ]
+        
+        for selector in breadcrumb_selectors:
+            breadcrumb_elements = soup.select(selector)
+            if breadcrumb_elements:
+                for crumb in breadcrumb_elements[1:-1]:  # Skip home and current page
+                    breadcrumbs.append(crumb.get_text(strip=True))
+                break
         
         category = " > ".join(breadcrumbs) if breadcrumbs else "Uncategorized"
         
@@ -762,14 +838,21 @@ def extract_product_data(url, manual_overrides):
         google_product_category = map_to_google_category(product_id, category, title, brand, manual_overrides)
         logging.info(f"Final Google category assignment: {google_product_category} for '{title}'")
         
-        # Stock status
+        # Stock status - Enhanced availability detection
         stock_status = "in stock"
-        out_of_stock_element = soup.select_one(".out-of-stock-label")
-        if out_of_stock_element:
-            stock_status = "out of stock"
+        out_of_stock_selectors = [
+            ".out-of-stock-label",
+            ".sold-out",
+            ".unavailable"
+        ]
+        
+        for selector in out_of_stock_selectors:
+            if soup.select_one(selector):
+                stock_status = "out of stock"
+                break
         
         # Low inventory check
-        price_span = price_div.select_one("span.d-block") if price_div else None
+        price_span = price_div.select_one("span.d-block") if 'price_div' in locals() and price_div else None
         if price_span:
             last_items_text = price_span.get_text(strip=True)
             if "last" in last_items_text.lower() and "left" in last_items_text.lower():
@@ -951,7 +1034,7 @@ def generate_xml(products):
 def main():
     logging.info("🚀 Starting COMPLETE Enhanced Product Feed Generator with Manual Override System")
     logging.info("=" * 100)
-    logging.info("🛡️ PROTECTION SYSTEM: ALL 242 of your manual Google Sheet assignments are preserved!")
+    logging.info("🛡️ PROTECTION SYSTEM: ALL 242+ of your manual Google Sheet assignments are preserved!")
     logging.info("🎯 PRIORITY ORDER:")
     logging.info("   1. Manual product-specific overrides (HIGHEST) - Your exact Google Sheet assignments")
     logging.info("   2. Specific product name patterns")  
@@ -968,24 +1051,39 @@ def main():
         
         if not os.path.exists(INPUT_CSV):
             logging.error(f"Input file does not exist: {INPUT_CSV}")
+            logging.error("Make sure the crawler has run successfully first!")
             return
             
         urls = []
         with open(INPUT_CSV, newline='', encoding='utf-8') as file:
             reader = csv.DictReader(file)
-            urls = [row["url"] for row in reader]
+            urls = [row["url"] for row in reader if row.get("url")]
         
         logging.info(f"📄 Read {len(urls)} URLs from {INPUT_CSV}")
         logging.info(f"🛡️ Using {len(manual_overrides)} manual category overrides")
-        logging.info(f"📊 Manual overrides cover 26 different categories from your Google Sheet")
+        logging.info(f"📊 Manual overrides cover 26+ different categories from your Google Sheet")
 
         products = []
-        for url in urls:
+        successful_extractions = 0
+        failed_extractions = 0
+        
+        for i, url in enumerate(urls, 1):
+            logging.info(f"📦 Processing product {i}/{len(urls)}: {url}")
             data = extract_product_data(url, manual_overrides)
             if data:
                 products.append(data)
+                successful_extractions += 1
+            else:
+                failed_extractions += 1
+                
+            # Progress update every 25 products
+            if i % 25 == 0:
+                logging.info(f"🔄 Progress: {i}/{len(urls)} processed, {successful_extractions} successful, {failed_extractions} failed")
 
-        logging.info(f"✅ Processed {len(products)} products out of {len(urls)} URLs")
+        logging.info("=" * 100)
+        logging.info(f"✅ EXTRACTION COMPLETE: Processed {len(products)} products out of {len(urls)} URLs")
+        logging.info(f"📊 Success rate: {(successful_extractions/len(urls)*100):.1f}%")
+        logging.info("=" * 100)
 
         if products:
             override_count = sum(1 for p in products if p['id'] in manual_overrides)
@@ -994,14 +1092,20 @@ def main():
             logging.info(f"🎯 Manual overrides used: {override_count}/{len(products)} products")
             logging.info(f"📝 Pattern matching used: {pattern_count}/{len(products)} products")
             
-            test_product = products[0]
-            logging.info(f"Debug - First product: {test_product['title']} -> Category: {test_product['google_product_category']}")
+            # Show sample of discovered products
+            logging.info("📋 Sample of processed products:")
+            for i, product in enumerate(products[:5], 1):
+                logging.info(f"   {i}. {product['title']} -> Category: {product['google_product_category']}")
+            
+            if len(products) > 5:
+                logging.info(f"   ... and {len(products) - 5} more products")
             
             xml_success = generate_xml(products)
             csv_success = generate_csv(products)
             google_success = generate_google_merchant_feed(products)
             
             if csv_success and xml_success and google_success:
+                print("=" * 80)
                 print(f"✅ Successfully generated feeds for {len(products)} products.")
                 print(f"🎯 Manual overrides preserved: {override_count} products")
                 print(f"📝 Pattern matching applied: {pattern_count} products")
@@ -1011,6 +1115,7 @@ def main():
                 print(f"   - {GOOGLE_MERCHANT_CSV}")
                 print(f"🛡️ Your manual category assignments are 100% PROTECTED!")
                 print(f"🔄 Future crawls will maintain your preferred categorization")
+                print("=" * 80)
             else:
                 if not csv_success:
                     print(f"⚠️ Failed to generate standard CSV feed.")
@@ -1021,6 +1126,11 @@ def main():
         else:
             logging.warning("No products were processed.")
             print("⚠️ No products were processed.")
+            print("🔍 Possible issues:")
+            print("   1. Check if the crawler found any product URLs")
+            print("   2. Verify the website is accessible")
+            print("   3. Check for changes in the website structure")
+            print("   4. Review the extraction selectors")
             
     except Exception as e:
         logging.error(f"Unexpected error in main: {e}")
