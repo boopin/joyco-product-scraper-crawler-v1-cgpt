@@ -108,18 +108,16 @@ jobs:
         env:
           FEED_FILE: google_feed/google_merchant_feed.csv
 
-      - name: Prepare input for category_updater
+      # ──────────── CATEGORY UPDATER ────────────
+      - name: Auto-assign Google categories with enhanced analysis
         run: |
           if [[ -f google_feed/google_merchant_feed.csv ]]; then
             cp google_feed/google_merchant_feed.csv ./google_merchant_feed.csv
+            python category_updater.py
           else
             echo "❌ google_merchant_feed.csv not found!"
             exit 1
           fi
-
-      # ──────────── CATEGORY UPDATER ────────────
-      - name: Auto-assign Google categories
-        run: python category_updater.py
 
       # ──────────── FEED HASH COMPARISON ────────────
       - name: Calculate new feed hash
@@ -184,7 +182,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          git commit -m "🚀 Updated product feeds - $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
+          git commit -m "🚀 Updated product feeds with enhanced categorization - $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
           git push
 
       - name: Summary of crawler run
@@ -203,7 +201,10 @@ jobs:
             echo "Products discovered: 0 (file not found)"
           fi
           
-          if [[ -f google_feed/google_merchant_feed.csv ]]; then
+          if [[ -f google_feed/google_merchant_feed_updated.csv ]]; then
+            feed_count=$(tail -n +2 google_feed/google_merchant_feed_updated.csv 2>/dev/null | wc -l || echo "0")
+            echo "Products in final feed: $feed_count"
+          elif [[ -f google_feed/google_merchant_feed.csv ]]; then
             feed_count=$(tail -n +2 google_feed/google_merchant_feed.csv 2>/dev/null | wc -l || echo "0")
             echo "Products in feed: $feed_count"
           else
@@ -218,4 +219,10 @@ jobs:
             tail -10 product_urls/product_links.csv || echo "Error reading file"
           else
             echo "No product URLs file found"
+          fi
+          
+          echo ""
+          echo "🎯 CATEGORIZATION RESULTS:"
+          if [[ -f categorization_review_report.csv ]]; then
+            echo "Review report created: categorization_review_report.csv"
           fi
