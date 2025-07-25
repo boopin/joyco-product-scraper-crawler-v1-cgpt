@@ -1,0 +1,6 @@
+{
+  "_comment": "Add product-specific category overrides here",
+  "_format": "product-id-from-url: category_id",
+  "_example": "some-product-name-abc123: 602",
+  "_note": "These will be added to the existing 242 manual overrides"
+}
