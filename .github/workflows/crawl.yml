@@ -65,7 +65,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Create necessary directories
-        run: mkdir -p product_urls google_feed meta_feed .github
+        run: mkdir -p product_urls google_feed meta_feed reports .github
 
       # ──────────── MODE & CRAWL (ALWAYS RUN) ────────────
       - name: Determine Crawl Mode (Dubai time)
@@ -221,11 +221,41 @@ jobs:
           echo "▶ Publishing Meta feed to Google Sheets"
           python sheets_publisher.py
 
+      # ──────────── SAVE REPORTS ────────────
+      - name: Prepare categorization report for commit
+        run: |
+          # Ensure categorization report is saved if it exists
+          if [[ -f categorization_review_report.csv ]]; then
+            echo "📊 Categorization report found - preparing for commit"
+            # Create reports directory if it doesn't exist
+            mkdir -p reports
+            # Copy with timestamp
+            timestamp=$(date '+%Y-%m-%d_%H-%M')
+            cp categorization_review_report.csv reports/categorization_review_report_${timestamp}.csv
+            # Also keep the latest version
+            cp categorization_review_report.csv reports/categorization_review_report_latest.csv
+            echo "✅ Categorization report saved to reports/ directory"
+          else
+            echo "ℹ️ No categorization report found"
+          fi
+
+      # ──────────── UPLOAD ARTIFACTS ────────────
+      - name: Upload categorization report as artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: categorization-report-${{ github.run_number }}
+          path: |
+            categorization_review_report.csv
+            reports/categorization_review_report_latest.csv
+          retention-days: 30
+          if-no-files-found: ignore
+
       # ──────────── COMMIT CHANGES ────────────
       - name: Commit and push changes
-        if: steps.check_changes.outputs.google_feed_changed == 'true' || steps.check_changes.outputs.meta_feed_changed == 'true'
+        if: steps.check_changes.outputs.google_feed_changed == 'true' || steps.check_changes.outputs.meta_feed_changed == 'true' || hashFiles('reports/categorization_review_report_latest.csv') != ''
         run: |
-          echo "▶ Committing updated feeds to repository"
+          echo "▶ Committing updated feeds and reports to repository"
           
           # Save hash files
           if [[ "${{ steps.check_changes.outputs.google_feed_changed }}" == "true" ]]; then
@@ -239,7 +269,16 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
-          git commit -m "🚀 Updated product feeds with enhanced categorization - $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
+          
+          # Create detailed commit message
+          commit_msg="🚀 Updated product feeds with enhanced categorization - $(date '+%Y-%m-%d %H:%M')"
+          if [[ -f reports/categorization_review_report_latest.csv ]]; then
+            commit_msg="$commit_msg
+
+📊 Includes categorization review report"
+          fi
+          
+          git commit -m "$commit_msg" || echo "No changes to commit"
           git push
 
       # ──────────── SUMMARY ────────────
@@ -289,6 +328,10 @@ jobs:
           
           echo ""
           echo "🎯 CATEGORIZATION RESULTS:"
-          if [[ -f categorization_review_report.csv ]]; then
-            echo "Review report created: categorization_review_report.csv"
+          if [[ -f reports/categorization_review_report_latest.csv ]]; then
+            echo "✅ Categorization review report saved to: reports/categorization_review_report_latest.csv"
+            report_lines=$(wc -l < reports/categorization_review_report_latest.csv 2>/dev/null || echo "0")
+            echo "📊 Report contains $report_lines lines"
+          else
+            echo "ℹ️ No categorization review report generated"
           fi
