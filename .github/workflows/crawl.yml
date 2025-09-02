@@ -120,78 +120,137 @@ jobs:
           fi
 
       # ──────────── FEED HASH COMPARISON ────────────
-      - name: Calculate new feed hash
-        id: calc_new_hash
+      - name: Calculate new feed hashes
+        id: calc_new_hashes
         run: |
+          # Google feed hash
           if [[ -f google_merchant_feed_updated.csv ]]; then
-            sha256=$(sha256sum google_merchant_feed_updated.csv | cut -d' ' -f1)
-            echo "✅ Updated feed hash: $sha256"
+            google_sha256=$(sha256sum google_merchant_feed_updated.csv | cut -d' ' -f1)
+            echo "✅ Updated Google feed hash: $google_sha256"
           else
-            sha256=""
-            echo "⚠️ No updated feed found"
+            google_sha256=""
+            echo "⚠️ No updated Google feed found"
           fi
-          echo "new_hash=$sha256" >> $GITHUB_OUTPUT
+          echo "google_hash=$google_sha256" >> $GITHUB_OUTPUT
+          
+          # Meta feed hash
+          if [[ -f meta_feed/facebook_product_feed.csv ]]; then
+            meta_sha256=$(sha256sum meta_feed/facebook_product_feed.csv | cut -d' ' -f1)
+            echo "✅ Meta feed hash: $meta_sha256"
+          else
+            meta_sha256=""
+            echo "⚠️ No Meta feed found"
+          fi
+          echo "meta_hash=$meta_sha256" >> $GITHUB_OUTPUT
 
-      - name: Read previous feed hash
-        id: read_prev_hash
+      - name: Read previous feed hashes
+        id: read_prev_hashes
         run: |
-          if [[ -f .github/last_feed_hash.txt ]]; then
-            prev_hash=$(cat .github/last_feed_hash.txt)
-            echo "📄 Previous hash: $prev_hash"
+          # Google feed hash
+          if [[ -f .github/last_google_feed_hash.txt ]]; then
+            prev_google_hash=$(cat .github/last_google_feed_hash.txt)
+            echo "📄 Previous Google hash: $prev_google_hash"
           else
-            prev_hash=""
-            echo "📄 No previous hash found"
+            prev_google_hash=""
+            echo "📄 No previous Google hash found"
           fi
-          echo "prev_hash=$prev_hash" >> $GITHUB_OUTPUT
+          echo "prev_google_hash=$prev_google_hash" >> $GITHUB_OUTPUT
+          
+          # Meta feed hash
+          if [[ -f .github/last_meta_feed_hash.txt ]]; then
+            prev_meta_hash=$(cat .github/last_meta_feed_hash.txt)
+            echo "📄 Previous Meta hash: $prev_meta_hash"
+          else
+            prev_meta_hash=""
+            echo "📄 No previous Meta hash found"
+          fi
+          echo "prev_meta_hash=$prev_meta_hash" >> $GITHUB_OUTPUT
 
       - name: Compare feed hashes for changes
         id: check_changes
         run: |
-          new_hash="${{ steps.calc_new_hash.outputs.new_hash }}"
-          prev_hash="${{ steps.read_prev_hash.outputs.prev_hash }}"
+          # Check Google feed changes
+          new_google_hash="${{ steps.calc_new_hashes.outputs.google_hash }}"
+          prev_google_hash="${{ steps.read_prev_hashes.outputs.prev_google_hash }}"
           
-          if [[ -n "$new_hash" && "$new_hash" != "$prev_hash" ]]; then
-            echo "feed_changed=true" >> $GITHUB_OUTPUT
-            echo "✅ Feed changes detected - will publish to Google Sheets"
+          if [[ -n "$new_google_hash" && "$new_google_hash" != "$prev_google_hash" ]]; then
+            echo "google_feed_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Google feed changes detected - will publish to Google Sheets"
           else
-            echo "feed_changed=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ No feed changes detected - skipping publish"
+            echo "google_feed_changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No Google feed changes detected - skipping Google publish"
+          fi
+          
+          # Check Meta feed changes
+          new_meta_hash="${{ steps.calc_new_hashes.outputs.meta_hash }}"
+          prev_meta_hash="${{ steps.read_prev_hashes.outputs.prev_meta_hash }}"
+          
+          if [[ -n "$new_meta_hash" && "$new_meta_hash" != "$prev_meta_hash" ]]; then
+            echo "meta_feed_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Meta feed changes detected - will publish to Google Sheets"
+          else
+            echo "meta_feed_changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No Meta feed changes detected - skipping Meta publish"
           fi
 
-      # ──────────── PUBLISH & COMMIT ON CHANGE ────────────
-      - name: Publish updated feed to Google Sheets
-        if: steps.check_changes.outputs.feed_changed == 'true'
+      # ──────────── PUBLISH GOOGLE FEED ────────────
+      - name: Publish updated Google feed to Google Sheets
+        if: steps.check_changes.outputs.google_feed_changed == 'true'
         env:
           GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
           SPREADSHEET_ID: "1aNtP8UJyy8sDYf3tPpCAZt-zMMHwofjpyEqrN9b1bJI"
           WORKSHEET_NAME: "google_merchant_feed"
           FEED_FILE: "google_feed/google_merchant_feed_updated.csv"
         run: |
-          echo "▶ Publishing updated feed to Google Sheets"
+          echo "▶ Publishing updated Google feed to Google Sheets"
           mkdir -p google_feed
           if [[ -f google_merchant_feed_updated.csv ]]; then
             mv google_merchant_feed_updated.csv google_feed/google_merchant_feed_updated.csv
           fi
           python sheets_publisher.py
 
+      # ──────────── PUBLISH META FEED ────────────
+      - name: Publish Meta feed to Google Sheets
+        if: steps.check_changes.outputs.meta_feed_changed == 'true'
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          SPREADSHEET_ID: "16o2rq9n5E_oIoqb0wzyDWOo3HbvVg2Gnu94KnltuP1Y"
+          WORKSHEET_NAME: "facebook_product_feed"
+          FEED_FILE: "meta_feed/facebook_product_feed.csv"
+        run: |
+          echo "▶ Publishing Meta feed to Google Sheets"
+          python sheets_publisher.py
+
+      # ──────────── COMMIT CHANGES ────────────
       - name: Commit and push changes
-        if: steps.check_changes.outputs.feed_changed == 'true'
+        if: steps.check_changes.outputs.google_feed_changed == 'true' || steps.check_changes.outputs.meta_feed_changed == 'true'
         run: |
           echo "▶ Committing updated feeds to repository"
-          echo "${{ steps.calc_new_hash.outputs.new_hash }}" > .github/last_feed_hash.txt
+          
+          # Save hash files
+          if [[ "${{ steps.check_changes.outputs.google_feed_changed }}" == "true" ]]; then
+            echo "${{ steps.calc_new_hashes.outputs.google_hash }}" > .github/last_google_feed_hash.txt
+          fi
+          
+          if [[ "${{ steps.check_changes.outputs.meta_feed_changed }}" == "true" ]]; then
+            echo "${{ steps.calc_new_hashes.outputs.meta_hash }}" > .github/last_meta_feed_hash.txt
+          fi
+          
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -A
           git commit -m "🚀 Updated product feeds with enhanced categorization - $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
           git push
 
+      # ──────────── SUMMARY ────────────
       - name: Summary of crawler run
         run: |
           echo "========================================"
           echo "📊 CRAWLER RUN SUMMARY"
           echo "========================================"
           echo "Mode: ${{ env.MODE }}"
-          echo "Feed changed: ${{ steps.check_changes.outputs.feed_changed }}"
+          echo "Google feed changed: ${{ steps.check_changes.outputs.google_feed_changed }}"
+          echo "Meta feed changed: ${{ steps.check_changes.outputs.meta_feed_changed }}"
           echo "Time: $(date)"
           
           if [[ -f product_urls/product_links.csv ]]; then
@@ -202,13 +261,20 @@ jobs:
           fi
           
           if [[ -f google_feed/google_merchant_feed_updated.csv ]]; then
-            feed_count=$(tail -n +2 google_feed/google_merchant_feed_updated.csv 2>/dev/null | wc -l || echo "0")
-            echo "Products in final feed: $feed_count"
+            google_feed_count=$(tail -n +2 google_feed/google_merchant_feed_updated.csv 2>/dev/null | wc -l || echo "0")
+            echo "Products in Google feed: $google_feed_count"
           elif [[ -f google_feed/google_merchant_feed.csv ]]; then
-            feed_count=$(tail -n +2 google_feed/google_merchant_feed.csv 2>/dev/null | wc -l || echo "0")
-            echo "Products in feed: $feed_count"
+            google_feed_count=$(tail -n +2 google_feed/google_merchant_feed.csv 2>/dev/null | wc -l || echo "0")
+            echo "Products in Google feed: $google_feed_count"
           else
-            echo "Products in feed: 0 (file not found)"
+            echo "Products in Google feed: 0 (file not found)"
+          fi
+          
+          if [[ -f meta_feed/facebook_product_feed.csv ]]; then
+            meta_feed_count=$(tail -n +2 meta_feed/facebook_product_feed.csv 2>/dev/null | wc -l || echo "0")
+            echo "Products in Meta feed: $meta_feed_count"
+          else
+            echo "Products in Meta feed: 0 (file not found)"
           fi
           echo "========================================"
 
